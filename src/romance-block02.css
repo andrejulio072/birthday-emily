@@ -1,0 +1,52 @@
+/* Quiet Days album layout and lightweight desktop depth. */
+
+@media (min-width: 821px) {
+  .album-tabs {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) 150px;
+  }
+}
+
+@media (min-width: 821px) and (pointer: fine) {
+  .memory-grid.album-quiet {
+    perspective: 1600px;
+    padding: 16px 10px 24px;
+  }
+
+  .memory-grid.album-quiet .memory-card {
+    transform-style: preserve-3d;
+    box-shadow: 0 22px 48px rgba(0, 0, 0, .2);
+    transition: transform .42s cubic-bezier(.2, .8, .2, 1), box-shadow .42s ease;
+  }
+
+  .memory-grid.album-quiet .memory-card:nth-child(4n + 1) {
+    transform: rotate(-1.2deg) translateY(7px);
+  }
+
+  .memory-grid.album-quiet .memory-card:nth-child(4n + 2) {
+    transform: rotate(.8deg) translateY(-3px);
+  }
+
+  .memory-grid.album-quiet .memory-card:nth-child(4n + 3) {
+    transform: rotate(-.45deg) translateY(4px);
+  }
+
+  .memory-grid.album-quiet .memory-card:nth-child(4n) {
+    transform: rotate(1.1deg) translateY(-5px);
+  }
+
+  .memory-grid.album-quiet .memory-card:hover {
+    z-index: 3;
+    transform: translateY(-10px) rotateX(2deg) scale(1.018);
+    box-shadow: 0 32px 70px rgba(0, 0, 0, .34);
+  }
+}
+
+@media (max-width: 1040px) and (min-width: 821px) {
+  .album-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .future-album {
+    min-height: 86px;
+  }
+}
