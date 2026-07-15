@@ -1,6 +1,10 @@
 export type PhotoMemory = {
   id: string
-  src: string
+  thumbSrc: string
+  displaySrc: string
+  blurDataUrl: string
+  width: number
+  height: number
   alt: string
   caption: string
   orientation: 'portrait' | 'landscape'
