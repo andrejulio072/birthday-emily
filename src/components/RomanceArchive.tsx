@@ -17,6 +17,13 @@ const albums = [
     count: 4,
     loader: () => import('../photoData/usBlock').then((module) => module.default),
   },
+  {
+    id: 'quiet',
+    title: 'Quiet Days',
+    subtitle: 'Home, closeness and the ordinary',
+    count: 10,
+    loader: () => import('../photoData/quietDaysBlock').then((module) => module.default),
+  },
 ] as const
 
 export function RomanceArchive() {
@@ -83,11 +90,11 @@ export function RomanceArchive() {
 
       <div className="archive-dashboard">
         <div className="archive-counter">
-          <strong>009</strong>
+          <strong>019</strong>
           <span>memories prepared</span>
         </div>
         <div className="archive-capacity">
-          <div><span style={{ width: '9%' }} /></div>
+          <div><span style={{ width: '19%' }} /></div>
           <p>Memory vault prepared for more than 100 photos · delivered in lightweight blocks</p>
         </div>
       </div>
@@ -112,7 +119,7 @@ export function RomanceArchive() {
         </div>
       </div>
 
-      <div className={loading ? 'memory-grid loading' : 'memory-grid'} aria-live="polite">
+      <div className={`${loading ? 'memory-grid loading' : 'memory-grid'} album-${album.id}`} aria-live="polite">
         {loading && Array.from({ length: 4 }, (_, index) => <div className="memory-skeleton" key={index} />)}
         {!loading && photos.map((photo, index) => (
           <button
@@ -148,7 +155,7 @@ export function RomanceArchive() {
 
       <div className="archive-next-blocks">
         <span>Next planned blocks</span>
-        <p>Our trips · Funny moments · Quiet days · Favourite selfies · The moments nobody else saw</p>
+        <p>Our trips · Funny moments · Favourite selfies · The moments nobody else saw · The next chapter</p>
       </div>
 
       {current && selected !== null && (
