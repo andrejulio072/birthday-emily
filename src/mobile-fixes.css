@@ -1,0 +1,214 @@
+/* Mobile stability and viewport fixes — loaded last on purpose. */
+
+/* The base intro child selector was overriding the canvas absolute positioning.
+   Keep all cinematic layers out of the grid flow on every device. */
+.cinematic-intro > .particle-field,
+.cinematic-intro > .intro-vignette,
+.cinematic-intro > .intro-scan {
+  position: absolute !important;
+  inset: 0;
+}
+
+.cinematic-intro > .particle-field {
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.cinematic-intro > .intro-vignette { z-index: 1; }
+.cinematic-intro > .intro-scan { z-index: 3; height: 1px; }
+.cinematic-intro > .intro-file-number,
+.cinematic-intro > .intro-terminal { z-index: 2; }
+
+@media (max-width: 760px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: clip;
+  }
+
+  .intro-screen.cinematic-intro {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100svh;
+    padding:
+      max(14px, env(safe-area-inset-top))
+      14px
+      max(14px, env(safe-area-inset-bottom));
+  }
+
+  .cinematic-intro .intro-file-number {
+    top: max(12px, env(safe-area-inset-top));
+    left: 14px;
+    font-size: 8px;
+    letter-spacing: .18em;
+  }
+
+  .cinematic-intro .intro-terminal {
+    width: 100%;
+    max-width: 520px;
+    max-height: calc(100svh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 22px 17px 18px;
+    border-radius: 22px;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, .48);
+    scrollbar-width: none;
+  }
+
+  .cinematic-intro .intro-terminal::-webkit-scrollbar { display: none; }
+
+  .cinematic-intro .eyebrow {
+    margin-bottom: 12px;
+    font-size: 8px;
+    line-height: 1.5;
+    letter-spacing: .16em;
+  }
+
+  .cinematic-intro .intro-status {
+    margin-bottom: 10px;
+    font-size: 9px;
+    letter-spacing: .09em;
+  }
+
+  .cinematic-intro .intro-terminal h1 {
+    margin: 0;
+    font-size: clamp(66px, 23vw, 100px);
+    line-height: .88;
+  }
+
+  .cinematic-intro .intro-type {
+    min-height: 68px;
+    margin: 15px auto 18px;
+    font-size: 10px;
+    line-height: 1.65;
+    letter-spacing: .055em;
+  }
+
+  .cinematic-intro .intro-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 9px;
+    width: 100%;
+  }
+
+  .cinematic-intro .primary-button,
+  .cinematic-intro .silent-button {
+    width: 100%;
+    min-height: 46px;
+    padding-inline: 16px;
+  }
+
+  .cinematic-intro .microcopy {
+    margin-top: 13px;
+    font-size: 9px;
+    line-height: 1.45;
+  }
+
+  .case-progress {
+    right: 9px;
+    bottom: max(9px, env(safe-area-inset-bottom));
+    gap: 7px;
+    padding: 8px 10px;
+    font-size: 8px;
+  }
+
+  .case-progress-label { display: none; }
+
+  .sound-toggle {
+    left: 9px;
+    bottom: max(9px, env(safe-area-inset-bottom));
+    padding: 8px 10px;
+    font-size: 8px;
+  }
+
+  .cursor-glow { display: none; }
+
+  .eras-experience,
+  .crime-board,
+  .crime-games-grid,
+  .suspect-dossier,
+  .video-section {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .era-stage {
+    position: relative;
+    top: auto;
+    min-height: 410px;
+  }
+
+  .suspect-tabs {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding: 3px 1px 10px;
+  }
+
+  .suspect-tab {
+    min-width: min(235px, 78vw);
+    scroll-snap-align: start;
+  }
+
+  .suspect-tab:hover,
+  .suspect-tab.active { transform: translateY(-3px); }
+
+  .suspect-dossier {
+    min-height: 0;
+    padding: 42px 18px 22px;
+  }
+
+  .suspect-mugshot {
+    min-height: 220px;
+    margin-top: 0;
+  }
+
+  .dossier-copy { padding-top: 0; }
+
+  .danger-row {
+    grid-template-columns: 1fr 44px;
+    gap: 8px;
+  }
+
+  .danger-row > span:first-child { grid-column: 1 / -1; }
+
+  .thriller-quiz,
+  .cipher-card {
+    min-height: 0;
+    padding: 23px 18px;
+  }
+
+  .secret-star {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+@media (max-height: 670px) and (max-width: 760px) {
+  .cinematic-intro .intro-terminal {
+    padding-block: 16px 13px;
+  }
+
+  .cinematic-intro .intro-terminal h1 {
+    font-size: clamp(58px, 19vw, 78px);
+  }
+
+  .cinematic-intro .intro-type {
+    min-height: 54px;
+    margin-block: 10px 12px;
+    line-height: 1.45;
+  }
+
+  .cinematic-intro .intro-status,
+  .cinematic-intro .eyebrow {
+    margin-bottom: 8px;
+  }
+
+  .cinematic-intro .primary-button,
+  .cinematic-intro .silent-button {
+    min-height: 42px;
+  }
+}
