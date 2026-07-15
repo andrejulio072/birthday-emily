@@ -1,0 +1,187 @@
+/* Adaptive rendering profile: preserve the full design while reducing mobile paint cost. */
+
+.enhanced-page > section:not(.hero),
+.enhanced-page > footer {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 900px;
+}
+
+.adaptive-particle-field,
+.adaptive-dance-visualizer {
+  contain: strict;
+  transform: translateZ(0);
+}
+
+.deferred-crime-shell {
+  min-height: 720px;
+  background: #0d0b0d;
+}
+
+.deferred-crime-placeholder {
+  min-height: 720px;
+  display: grid;
+  place-items: center;
+  padding: 48px 22px;
+  color: rgba(233, 225, 219, .58);
+  text-align: center;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(139, 25, 53, .14), transparent 34%),
+    #0d0b0d;
+}
+
+.deferred-crime-placeholder span {
+  display: inline-block;
+  width: 34px;
+  height: 34px;
+  margin-bottom: 18px;
+  border: 2px solid rgba(215, 91, 120, .22);
+  border-top-color: #d75b78;
+  border-radius: 50%;
+  animation: performanceSpin .9s linear infinite;
+}
+
+.deferred-crime-placeholder p {
+  margin: 0;
+  font-size: 11px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+@keyframes performanceSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 820px), (pointer: coarse) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  body {
+    overscroll-behavior-y: none;
+  }
+
+  .enhanced-page > section:not(.hero),
+  .enhanced-page > footer {
+    contain-intrinsic-size: auto 760px;
+  }
+
+  .cursor-glow,
+  .crime-noise,
+  .crime-board-lines,
+  .hero-orbit,
+  .evidence-fingerprint {
+    display: none !important;
+  }
+
+  .intro-terminal,
+  .case-progress,
+  .sound-toggle {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .intro-terminal {
+    background: rgba(18, 8, 15, .9);
+    box-shadow: 0 18px 42px rgba(0, 0, 0, .3);
+  }
+
+  .reveal {
+    filter: none !important;
+    transform: translateY(16px);
+    transition-duration: .42s;
+    transition-delay: min(var(--reveal-delay, 0ms), 100ms);
+  }
+
+  .reveal-visible {
+    transform: none;
+  }
+
+  .tilt-card,
+  .tilt-card:hover {
+    transform: none !important;
+    box-shadow: none;
+  }
+
+  .profile-card,
+  .era-stage,
+  .crime-board,
+  .suspect-dossier,
+  .thriller-quiz,
+  .cipher-card,
+  .evidence-file,
+  .gallery-stage,
+  .video-frame {
+    box-shadow: none !important;
+  }
+
+  .secret-star {
+    animation-duration: 4.5s;
+  }
+
+  .reason-card,
+  .evidence-tab,
+  .era-card,
+  .suspect-tab,
+  .quiz-options button {
+    transition-duration: .18s;
+  }
+
+  .photo-section .particle-field {
+    opacity: .38;
+  }
+
+  .hero .particle-field,
+  .cinematic-intro .particle-field {
+    opacity: .7;
+  }
+
+  .adaptive-dance-visualizer {
+    opacity: .58;
+  }
+
+  .finale-overlay {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .confetti-rain span:nth-child(n+46) {
+    display: none;
+  }
+
+  .crime-board,
+  .crime-games-grid,
+  .eras-experience,
+  .video-section {
+    contain: layout paint;
+  }
+}
+
+@media (max-width: 480px) {
+  .enhanced-page > section:not(.hero),
+  .enhanced-page > footer {
+    contain-intrinsic-size: auto 680px;
+  }
+
+  .deferred-crime-shell,
+  .deferred-crime-placeholder {
+    min-height: 560px;
+  }
+
+  .secret-stars .secret-star:nth-child(even) {
+    display: none;
+  }
+
+  .case-progress-label {
+    display: none;
+  }
+
+  .reason-card {
+    perspective: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .deferred-crime-placeholder span {
+    animation: none;
+  }
+}
