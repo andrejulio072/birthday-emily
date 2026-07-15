@@ -9,5 +9,5 @@ export type PhotoMemory = {
   caption: string
   orientation: 'portrait' | 'landscape'
   position: string
-  chapter: 'birthday' | 'us'
+  chapter: 'birthday' | 'us' | 'quiet'
 }
