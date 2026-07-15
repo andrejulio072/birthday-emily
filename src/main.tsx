@@ -6,6 +6,7 @@ import './experience.css'
 import './mobile-fixes.css'
 import './performance.css'
 import './romance.css'
+import './romance-block02.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
