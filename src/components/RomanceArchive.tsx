@@ -8,6 +8,7 @@ export function RomanceArchive() {
   const [activeAlbum, setActiveAlbum] = useState(0)
   const [photos, setPhotos] = useState<PhotoMemory[]>([])
   const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(() => new Set())
+  const [previewPhotoIds, setPreviewPhotoIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [armed, setArmed] = useState(false)
   const [selected, setSelected] = useState<number | null>(null)
@@ -32,6 +33,7 @@ export function RomanceArchive() {
     let cancelled = false
     setLoading(true)
     setLoadedPhotoIds(new Set())
+    setPreviewPhotoIds(new Set())
     albums[activeAlbum].loader().then((items) => {
       if (cancelled) return
       setPhotos(items)
@@ -66,6 +68,19 @@ export function RomanceArchive() {
     })
   }
 
+  function showEmbeddedPreview(photo: PhotoMemory, image: HTMLImageElement) {
+    if (image.dataset.previewFallback === 'true') return
+    image.dataset.previewFallback = 'true'
+    image.srcset = ''
+    image.src = photo.blurDataUrl
+    setPreviewPhotoIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      nextIds.add(photo.id)
+      return nextIds
+    })
+    markReady(photo.id)
+  }
+
   return (
     <section ref={sectionRef} className="romance-archive" id="memories">
       <div className="archive-orbit" aria-hidden="true" />
@@ -82,7 +97,7 @@ export function RomanceArchive() {
         </div>
         <div className="archive-capacity">
           <div><span style={{ width: `${archiveProgress}%` }} /></div>
-          <p>Every photo is catalogued in GitHub first. Full media can be uploaded to Supabase later without changing the page structure.</p>
+          <p>Every memory is visible now through a lightweight embedded preview. Supabase will replace it with the full-resolution version later.</p>
         </div>
       </div>
 
@@ -97,7 +112,7 @@ export function RomanceArchive() {
           >
             <span>Block {String(index + 1).padStart(2, '0')}</span>
             <strong>{item.title}</strong>
-            <small>{item.subtitle} · {item.count} memories prepared</small>
+            <small>{item.subtitle} · {item.count} memories</small>
           </button>
         ))}
         <div className="future-album" aria-label="Future photo blocks">
@@ -110,12 +125,13 @@ export function RomanceArchive() {
         {loading && Array.from({ length: 4 }, (_, index) => <div className="memory-skeleton" key={index} />)}
         {!loading && photos.map((photo, index) => {
           const isReady = loadedPhotoIds.has(photo.id)
+          const isPreview = previewPhotoIds.has(photo.id)
           return (
             <button
-              className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'}`}
+              className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'} ${isPreview ? 'embedded-preview' : ''}`}
               key={photo.id}
               onClick={() => { if (isReady) setSelected(index) }}
-              aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Full image upload pending.`}
+              aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Loading preview.`}
               aria-disabled={!isReady}
               style={{ backgroundImage: `url(${photo.blurDataUrl})`, backgroundSize: 'cover', backgroundPosition: photo.position }}
             >
@@ -130,11 +146,9 @@ export function RomanceArchive() {
                 decoding="async"
                 style={{ objectPosition: photo.position }}
                 onLoad={() => markReady(photo.id)}
-                onError={(event) => {
-                  event.currentTarget.hidden = true
-                }}
+                onError={(event) => showEmbeddedPreview(photo, event.currentTarget)}
               />
-              {!isReady && <span className="media-status">Preview prepared · media upload later</span>}
+              {isPreview && <span className="media-status">Embedded preview · HD version later</span>}
               <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
               <div className="memory-caption">
                 <small>{album.title}</small>
@@ -159,8 +173,21 @@ export function RomanceArchive() {
             aria-label="Previous photo"
           >←</button>
           <figure onClick={(event) => event.stopPropagation()}>
-            <img src={current.displaySrc} alt={current.alt} style={{ objectPosition: current.position }} decoding="async" />
-            <figcaption><span>{album.title}</span><strong>{current.caption}</strong></figcaption>
+            <img
+              src={current.displaySrc}
+              alt={current.alt}
+              style={{ objectPosition: current.position }}
+              decoding="async"
+              onError={(event) => {
+                if (event.currentTarget.dataset.previewFallback === 'true') return
+                event.currentTarget.dataset.previewFallback = 'true'
+                event.currentTarget.src = current.blurDataUrl
+              }}
+            />
+            <figcaption>
+              <span>{album.title}{previewPhotoIds.has(current.id) ? ' · Embedded preview' : ''}</span>
+              <strong>{current.caption}</strong>
+            </figcaption>
           </figure>
           <button
             className="lightbox-arrow next"
