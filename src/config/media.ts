@@ -1,4 +1,4 @@
-const defaultMediaBaseUrl = 'https://fqivhobabbxxbtkjlnmq.supabase.co/storage/v1/object/public/emily-birthday-media'
+const defaultMediaBaseUrl = 'https://ujdkepevbkjwwotcmnvr.supabase.co/storage/v1/object/public/emily-birthday-media'
 
 export const MEDIA_BASE_URL = (
   import.meta.env.VITE_MEDIA_BASE_URL || defaultMediaBaseUrl
