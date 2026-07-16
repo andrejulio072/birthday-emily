@@ -1,3 +1,12 @@
+export type PhotoChapter =
+  | 'birthday'
+  | 'us'
+  | 'quiet'
+  | 'adventures'
+  | 'training'
+  | 'many-sides'
+  | 'alicante'
+
 export type PhotoMemory = {
   id: string
   thumbSrc: string
@@ -9,5 +18,5 @@ export type PhotoMemory = {
   caption: string
   orientation: 'portrait' | 'landscape'
   position: string
-  chapter: 'birthday' | 'us' | 'quiet' | 'adventures' | 'training' | 'many-sides'
+  chapter: PhotoChapter
 }
