@@ -24,6 +24,27 @@ const albums = [
     count: 10,
     loader: () => import('../photoData/quietDaysBlock').then((module) => module.default),
   },
+  {
+    id: 'adventures',
+    title: 'Little Adventures',
+    subtitle: 'Coffee, gardens, sunshine and sea',
+    count: 5,
+    loader: () => import('../photoData/adventuresBlock').then((module) => module.default),
+  },
+  {
+    id: 'training',
+    title: 'Stronger Together',
+    subtitle: 'A very convincing power couple',
+    count: 3,
+    loader: () => import('../photoData/trainingBlock').then((module) => module.default),
+  },
+  {
+    id: 'many-sides',
+    title: 'Her Many Sides',
+    subtitle: 'Soft, strong and unmistakably Emily',
+    count: 2,
+    loader: () => import('../photoData/manySidesBlock').then((module) => module.default),
+  },
 ] as const
 
 export function RomanceArchive() {
@@ -90,11 +111,11 @@ export function RomanceArchive() {
 
       <div className="archive-dashboard">
         <div className="archive-counter">
-          <strong>019</strong>
+          <strong>029</strong>
           <span>memories prepared</span>
         </div>
         <div className="archive-capacity">
-          <div><span style={{ width: '19%' }} /></div>
+          <div><span style={{ width: '29%' }} /></div>
           <p>Memory vault prepared for more than 100 photos · delivered in lightweight blocks</p>
         </div>
       </div>
@@ -155,7 +176,7 @@ export function RomanceArchive() {
 
       <div className="archive-next-blocks">
         <span>Next planned blocks</span>
-        <p>Our trips · Funny moments · Favourite selfies · The moments nobody else saw · The next chapter</p>
+        <p>Trips · Funny moments · Favourite selfies · The moments nobody else saw · The next chapter</p>
       </div>
 
       {current && selected !== null && (
