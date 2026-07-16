@@ -1,0 +1,64 @@
+/* Lightweight in-repository previews shown until Supabase HD media is uploaded. */
+
+.memory-card.embedded-preview {
+  cursor: zoom-in;
+  border-color: rgba(215, 183, 124, .28);
+  background-color: #21121d;
+}
+
+.memory-card.embedded-preview img {
+  opacity: 1;
+  filter: saturate(.95) contrast(1.04);
+  transform: scale(1.035);
+  image-rendering: auto;
+}
+
+.memory-card.embedded-preview:hover img {
+  transform: scale(1.065);
+}
+
+.memory-card.embedded-preview .media-status {
+  position: absolute;
+  z-index: 4;
+  top: 14px;
+  left: 14px;
+  max-width: calc(100% - 72px);
+  padding: 7px 10px;
+  border: 1px solid rgba(247, 238, 232, .16);
+  border-radius: 999px;
+  color: rgba(247, 238, 232, .82);
+  background: rgba(12, 7, 11, .72);
+  backdrop-filter: blur(8px);
+  font-size: 8px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.memory-card.embedded-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(135deg, rgba(215,183,124,.06), transparent 42%, rgba(228,184,198,.08));
+}
+
+.memory-lightbox figure img[data-preview-fallback='true'] {
+  width: min(760px, 88vw);
+  min-height: min(68vh, 620px);
+  object-fit: cover;
+  image-rendering: auto;
+}
+
+@media (max-width: 540px) {
+  .memory-card.embedded-preview .media-status {
+    top: 11px;
+    left: 11px;
+    padding: 6px 8px;
+    font-size: 7px;
+  }
+
+  .memory-lightbox figure img[data-preview-fallback='true'] {
+    min-height: 54vh;
+  }
+}
