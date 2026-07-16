@@ -1,56 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { Reveal } from './Effects'
+import { albums, archiveProgress, totalPreparedMemories } from '../photoData/registry'
 import type { PhotoMemory } from '../photoData/types'
-
-const albums = [
-  {
-    id: 'birthday',
-    title: 'Chapter 30',
-    subtitle: 'The birthday girl',
-    count: 5,
-    loader: () => import('../photoData/birthdayBlock').then((module) => module.default),
-  },
-  {
-    id: 'us',
-    title: 'The Us Files',
-    subtitle: 'Real moments, no filters',
-    count: 4,
-    loader: () => import('../photoData/usBlock').then((module) => module.default),
-  },
-  {
-    id: 'quiet',
-    title: 'Quiet Days',
-    subtitle: 'Home, closeness and the ordinary',
-    count: 10,
-    loader: () => import('../photoData/quietDaysBlock').then((module) => module.default),
-  },
-  {
-    id: 'adventures',
-    title: 'Little Adventures',
-    subtitle: 'Coffee, gardens, sunshine and sea',
-    count: 5,
-    loader: () => import('../photoData/adventuresBlock').then((module) => module.default),
-  },
-  {
-    id: 'training',
-    title: 'Stronger Together',
-    subtitle: 'A very convincing power couple',
-    count: 3,
-    loader: () => import('../photoData/trainingBlock').then((module) => module.default),
-  },
-  {
-    id: 'many-sides',
-    title: 'Her Many Sides',
-    subtitle: 'Soft, strong and unmistakably Emily',
-    count: 2,
-    loader: () => import('../photoData/manySidesBlock').then((module) => module.default),
-  },
-] as const
 
 export function RomanceArchive() {
   const sectionRef = useRef<HTMLElement>(null)
   const [activeAlbum, setActiveAlbum] = useState(0)
   const [photos, setPhotos] = useState<PhotoMemory[]>([])
+  const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [armed, setArmed] = useState(false)
   const [selected, setSelected] = useState<number | null>(null)
@@ -74,6 +31,7 @@ export function RomanceArchive() {
     if (!armed) return
     let cancelled = false
     setLoading(true)
+    setLoadedPhotoIds(new Set())
     albums[activeAlbum].loader().then((items) => {
       if (cancelled) return
       setPhotos(items)
@@ -100,6 +58,14 @@ export function RomanceArchive() {
   const album = albums[activeAlbum]
   const current = selected === null ? null : photos[selected]
 
+  function markReady(photoId: string) {
+    setLoadedPhotoIds((currentIds) => {
+      const nextIds = new Set(currentIds)
+      nextIds.add(photoId)
+      return nextIds
+    })
+  }
+
   return (
     <section ref={sectionRef} className="romance-archive" id="memories">
       <div className="archive-orbit" aria-hidden="true" />
@@ -111,12 +77,12 @@ export function RomanceArchive() {
 
       <div className="archive-dashboard">
         <div className="archive-counter">
-          <strong>029</strong>
-          <span>memories prepared</span>
+          <strong>{String(totalPreparedMemories).padStart(3, '0')}</strong>
+          <span>memories organised</span>
         </div>
         <div className="archive-capacity">
-          <div><span style={{ width: '29%' }} /></div>
-          <p>Memory vault prepared for more than 100 photos · delivered in lightweight blocks</p>
+          <div><span style={{ width: `${archiveProgress}%` }} /></div>
+          <p>Every photo is catalogued in GitHub first. Full media can be uploaded to Supabase later without changing the page structure.</p>
         </div>
       </div>
 
@@ -131,7 +97,7 @@ export function RomanceArchive() {
           >
             <span>Block {String(index + 1).padStart(2, '0')}</span>
             <strong>{item.title}</strong>
-            <small>{item.subtitle} · {item.count} photos</small>
+            <small>{item.subtitle} · {item.count} memories prepared</small>
           </button>
         ))}
         <div className="future-album" aria-label="Future photo blocks">
@@ -142,41 +108,46 @@ export function RomanceArchive() {
 
       <div className={`${loading ? 'memory-grid loading' : 'memory-grid'} album-${album.id}`} aria-live="polite">
         {loading && Array.from({ length: 4 }, (_, index) => <div className="memory-skeleton" key={index} />)}
-        {!loading && photos.map((photo, index) => (
-          <button
-            className={`memory-card ${photo.orientation}`}
-            key={photo.id}
-            onClick={() => setSelected(index)}
-            aria-label={`Open ${photo.caption}`}
-            style={{ backgroundImage: `url(${photo.blurDataUrl})`, backgroundSize: 'cover', backgroundPosition: photo.position }}
-          >
-            <img
-              src={photo.thumbSrc}
-              srcSet={`${photo.thumbSrc} 480w, ${photo.displaySrc} 1280w`}
-              sizes="(max-width: 540px) 100vw, (max-width: 820px) 50vw, 34vw"
-              width={photo.width}
-              height={photo.height}
-              alt={photo.alt}
-              loading="lazy"
-              decoding="async"
-              style={{ objectPosition: photo.position }}
-              onError={(event) => {
-                event.currentTarget.hidden = true
-                event.currentTarget.parentElement?.classList.add('media-pending')
-              }}
-            />
-            <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
-            <div className="memory-caption">
-              <small>{album.title}</small>
-              <strong>{photo.caption}</strong>
-            </div>
-          </button>
-        ))}
+        {!loading && photos.map((photo, index) => {
+          const isReady = loadedPhotoIds.has(photo.id)
+          return (
+            <button
+              className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'}`}
+              key={photo.id}
+              onClick={() => { if (isReady) setSelected(index) }}
+              aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Full image upload pending.`}
+              aria-disabled={!isReady}
+              style={{ backgroundImage: `url(${photo.blurDataUrl})`, backgroundSize: 'cover', backgroundPosition: photo.position }}
+            >
+              <img
+                src={photo.thumbSrc}
+                srcSet={`${photo.thumbSrc} 480w, ${photo.displaySrc} 1280w`}
+                sizes="(max-width: 540px) 100vw, (max-width: 820px) 50vw, 34vw"
+                width={photo.width}
+                height={photo.height}
+                alt={photo.alt}
+                loading="lazy"
+                decoding="async"
+                style={{ objectPosition: photo.position }}
+                onLoad={() => markReady(photo.id)}
+                onError={(event) => {
+                  event.currentTarget.hidden = true
+                }}
+              />
+              {!isReady && <span className="media-status">Preview prepared · media upload later</span>}
+              <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
+              <div className="memory-caption">
+                <small>{album.title}</small>
+                <strong>{photo.caption}</strong>
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       <div className="archive-next-blocks">
         <span>Next planned blocks</span>
-        <p>Trips · Funny moments · Favourite selfies · The moments nobody else saw · The next chapter</p>
+        <p>Funny moments · Favourite selfies · The moments nobody else saw · London · The next chapter</p>
       </div>
 
       {current && selected !== null && (
