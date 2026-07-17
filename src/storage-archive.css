@@ -1,0 +1,90 @@
+.archive-dashboard {
+  position: relative;
+  align-items: center;
+}
+
+.archive-source-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 118px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 999px;
+  color: rgba(255,255,255,.62);
+  background: rgba(255,255,255,.055);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .11em;
+  text-transform: uppercase;
+}
+
+.archive-source-badge i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f0c76e;
+  box-shadow: 0 0 13px rgba(240,199,110,.72);
+}
+
+.archive-source-badge.supabase {
+  color: rgba(224,255,248,.82);
+  border-color: rgba(85,214,209,.25);
+  background: rgba(85,214,209,.08);
+}
+
+.archive-source-badge.supabase i {
+  background: #55d6d1;
+  box-shadow: 0 0 15px rgba(85,214,209,.82);
+  animation: archiveConnectionPulse 1.8s ease-in-out infinite;
+}
+
+.romance-archive[data-archive-source='supabase'] .archive-counter strong {
+  background: linear-gradient(90deg, #f2c777, #79e2db, #ef93b6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.memory-card img {
+  transition: opacity .45s ease, transform .75s cubic-bezier(.2,.75,.2,1);
+}
+
+.memory-card.media-ready:hover img {
+  transform: scale(1.045);
+}
+
+.memory-card.media-pending::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,.12) 44%, transparent 68%);
+  transform: translateX(-110%);
+  animation: archiveLoadingSweep 1.8s ease-in-out infinite;
+}
+
+@keyframes archiveConnectionPulse {
+  50% { opacity: .35; transform: scale(.72); }
+}
+
+@keyframes archiveLoadingSweep {
+  to { transform: translateX(110%); }
+}
+
+@media (max-width: 760px) {
+  .archive-source-badge {
+    width: max-content;
+    min-width: 0;
+    justify-self: start;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .archive-source-badge.supabase i,
+  .memory-card.media-pending::after {
+    animation: none !important;
+  }
+}
