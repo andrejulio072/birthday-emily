@@ -1,64 +1,63 @@
+import { loadSupabaseAlbum, type StorageAlbumResult } from '../config/storage'
 import type { PhotoChapter, PhotoMemory } from './types'
 
 export type PhotoAlbum = {
   id: PhotoChapter
+  storageFolder: 'couple' | 'dublin' | 'alicante'
   title: string
   subtitle: string
   count: number
-  loader: () => Promise<PhotoMemory[]>
+  fallbackLoader: () => Promise<PhotoMemory[]>
+}
+
+async function loadCoupleFallback() {
+  const [us, quiet, training, manySides] = await Promise.all([
+    import('./usBlock').then((module) => module.default),
+    import('./quietDaysBlock').then((module) => module.default),
+    import('./trainingBlock').then((module) => module.default),
+    import('./manySidesBlock').then((module) => module.default),
+  ])
+  return [...us, ...quiet, ...training, ...manySides]
 }
 
 export const albums: PhotoAlbum[] = [
   {
-    id: 'birthday',
-    title: 'Chapter 30',
-    subtitle: 'The birthday girl',
-    count: 5,
-    loader: () => import('./birthdayBlock').then((module) => module.default),
-  },
-  {
     id: 'us',
+    storageFolder: 'couple',
     title: 'The Us Files',
-    subtitle: 'Real moments, no filters',
-    count: 4,
-    loader: () => import('./usBlock').then((module) => module.default),
-  },
-  {
-    id: 'quiet',
-    title: 'Quiet Days',
-    subtitle: 'Home, closeness and the ordinary',
-    count: 10,
-    loader: () => import('./quietDaysBlock').then((module) => module.default),
+    subtitle: 'Couple photos and the moments that belong to us',
+    count: 19,
+    fallbackLoader: loadCoupleFallback,
   },
   {
     id: 'adventures',
-    title: 'Little Adventures',
-    subtitle: 'Coffee, gardens, sunshine and sea',
+    storageFolder: 'dublin',
+    title: 'Dublin Days',
+    subtitle: 'Home, gardens, walks and our Irish chapters',
     count: 5,
-    loader: () => import('./adventuresBlock').then((module) => module.default),
-  },
-  {
-    id: 'training',
-    title: 'Stronger Together',
-    subtitle: 'A very convincing power couple',
-    count: 3,
-    loader: () => import('./trainingBlock').then((module) => module.default),
-  },
-  {
-    id: 'many-sides',
-    title: 'Her Many Sides',
-    subtitle: 'Soft, strong and unmistakably Emily',
-    count: 2,
-    loader: () => import('./manySidesBlock').then((module) => module.default),
+    fallbackLoader: () => import('./adventuresBlock').then((module) => module.default),
   },
   {
     id: 'alicante',
+    storageFolder: 'alicante',
     title: 'The Alicante Files',
     subtitle: 'Camels, sea views, salt lakes and us',
     count: 10,
-    loader: () => import('./alicanteBlock').then((module) => module.default),
+    fallbackLoader: () => import('./alicanteBlock').then((module) => module.default),
   },
 ]
+
+export async function loadAlbum(album: PhotoAlbum): Promise<StorageAlbumResult> {
+  const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
+  if (liveAlbum.photos.length > 0) return liveAlbum
+
+  const fallbackPhotos = await album.fallbackLoader()
+  return {
+    photos: fallbackPhotos.map((photo) => ({ ...photo, source: 'fallback' as const })),
+    source: 'fallback',
+    reason: liveAlbum.reason,
+  }
+}
 
 export const totalPreparedMemories = albums.reduce((total, album) => total + album.count, 0)
 export const archiveProgress = Math.min(totalPreparedMemories, 100)
