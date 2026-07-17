@@ -9,6 +9,7 @@ import './romance.css'
 import './romance-block02.css'
 import './album-themes.css'
 import './embedded-previews.css'
+import './theme-park.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
