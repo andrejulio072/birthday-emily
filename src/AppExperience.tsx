@@ -3,19 +3,26 @@ import { createPortal } from 'react-dom'
 import AppMobileOptimized from './AppMobileOptimized'
 import { MusicSection } from './components/MusicSection'
 import { RomanceArchive } from './components/RomanceArchive'
+import { ThemeParkJourney } from './components/ThemeParkJourney'
 
 type PortalTargets = {
+  park: HTMLElement | null
   music: HTMLElement | null
   memories: HTMLElement | null
 }
 
 function AppExperience() {
-  const [targets, setTargets] = useState<PortalTargets>({ music: null, memories: null })
+  const [targets, setTargets] = useState<PortalTargets>({ park: null, music: null, memories: null })
 
   useEffect(() => {
+    const profile = document.getElementById('profile')
     const eras = document.getElementById('eras')
     const oldMemories = document.querySelector<HTMLElement>('section#memories')
-    if (!eras || !oldMemories) return
+    if (!profile || !eras || !oldMemories) return
+
+    const parkMount = document.createElement('div')
+    parkMount.dataset.experiencePortal = 'birthday-park'
+    profile.insertAdjacentElement('beforebegin', parkMount)
 
     const musicMount = document.createElement('div')
     musicMount.dataset.experiencePortal = 'soundtrack'
@@ -25,9 +32,10 @@ function AppExperience() {
     memoriesMount.dataset.experiencePortal = 'memories'
     oldMemories.replaceWith(memoriesMount)
 
-    setTargets({ music: musicMount, memories: memoriesMount })
+    setTargets({ park: parkMount, music: musicMount, memories: memoriesMount })
 
     return () => {
+      parkMount.remove()
       musicMount.remove()
       memoriesMount.remove()
     }
@@ -36,6 +44,7 @@ function AppExperience() {
   return (
     <>
       <AppMobileOptimized />
+      {targets.park && createPortal(<ThemeParkJourney />, targets.park)}
       {targets.music && createPortal(<MusicSection />, targets.music)}
       {targets.memories && createPortal(<RomanceArchive />, targets.memories)}
     </>
