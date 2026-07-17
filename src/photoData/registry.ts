@@ -3,7 +3,7 @@ import type { PhotoChapter, PhotoMemory } from './types'
 
 export type PhotoAlbum = {
   id: PhotoChapter
-  storageFolder: 'couple' | 'dublin' | 'alicante'
+  storageFolder: string
   title: string
   subtitle: string
   count: number
@@ -23,7 +23,7 @@ async function loadCoupleFallback() {
 export const albums: PhotoAlbum[] = [
   {
     id: 'us',
-    storageFolder: 'couple',
+    storageFolder: 'Photos/us',
     title: 'The Us Files',
     subtitle: 'Couple photos and the moments that belong to us',
     count: 19,
@@ -31,15 +31,15 @@ export const albums: PhotoAlbum[] = [
   },
   {
     id: 'adventures',
-    storageFolder: 'dublin',
-    title: 'Dublin Days',
-    subtitle: 'Home, gardens, walks and our Irish chapters',
-    count: 5,
+    storageFolder: 'Photos/adventures',
+    title: 'Our Adventures',
+    subtitle: 'Days out, rides, journeys and the places we discovered together',
+    count: 13,
     fallbackLoader: () => import('./adventuresBlock').then((module) => module.default),
   },
   {
     id: 'alicante',
-    storageFolder: 'alicante',
+    storageFolder: 'Photos/alicante',
     title: 'The Alicante Files',
     subtitle: 'Camels, sea views, salt lakes and us',
     count: 10,
