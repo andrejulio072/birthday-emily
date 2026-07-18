@@ -1,7 +1,84 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Reveal } from './Effects'
+import { MEDIA_BASE_URL } from '../config/media'
 import { albums, loadAlbum, totalPreparedMemories } from '../photoData/registry'
 import type { PhotoMemory } from '../photoData/types'
+
+const chapterFolders: Record<PhotoMemory['chapter'], string> = {
+  birthday: 'birthday',
+  us: 'us',
+  quiet: 'us',
+  adventures: 'adventures',
+  training: 'us',
+  'many-sides': 'us',
+  alicante: 'alicante',
+}
+
+function unique(values: string[]) {
+  return [...new Set(values.filter(Boolean))]
+}
+
+function fileNameFromUrl(source: string) {
+  if (!source || source.startsWith('data:')) return ''
+  try {
+    return decodeURIComponent(new URL(source, window.location.origin).pathname.split('/').pop() || '')
+  } catch {
+    return source.split('/').pop() || ''
+  }
+}
+
+function storageCandidates(source: string, photo: PhotoMemory) {
+  if (!source || source.startsWith('data:')) return []
+
+  const fileName = fileNameFromUrl(source)
+  if (!fileName) return [source]
+
+  const folder = chapterFolders[photo.chapter]
+  const rawName = `${photo.id}.jpg`
+
+  return unique([
+    source,
+    `${MEDIA_BASE_URL}/${fileName}`,
+    `${MEDIA_BASE_URL}/Photos/${folder}/${fileName}`,
+    `${MEDIA_BASE_URL}/photos/${folder}/${fileName}`,
+    `${MEDIA_BASE_URL}/Photos/${folder}/optimized/${fileName}`,
+    `${MEDIA_BASE_URL}/photos/${folder}/block-01/${fileName}`,
+    `${MEDIA_BASE_URL}/Photos/${folder}/raw/${rawName}`,
+    `${MEDIA_BASE_URL}/photos/${folder}/raw/${rawName}`,
+  ])
+}
+
+function photoCandidates(photo: PhotoMemory, displayFirst = false) {
+  const preferred = displayFirst
+    ? [photo.displaySrc, photo.thumbSrc]
+    : [photo.thumbSrc, photo.displaySrc]
+
+  return unique(preferred.flatMap((source) => storageCandidates(source, photo)))
+}
+
+function useNextImageCandidate(
+  photo: PhotoMemory,
+  image: HTMLImageElement,
+  displayFirst: boolean,
+  onPreview?: () => void,
+) {
+  const candidates = photoCandidates(photo, displayFirst)
+  const currentIndex = Number(image.dataset.candidateIndex || '0')
+  const nextIndex = currentIndex + 1
+
+  if (nextIndex < candidates.length) {
+    image.dataset.candidateIndex = String(nextIndex)
+    image.removeAttribute('srcset')
+    image.src = candidates[nextIndex]
+    return
+  }
+
+  if (image.dataset.previewFallback === 'true') return
+  image.dataset.previewFallback = 'true'
+  image.removeAttribute('srcset')
+  image.src = photo.blurDataUrl
+  onPreview?.()
+}
 
 export function RomanceArchive() {
   const sectionRef = useRef<HTMLElement>(null)
@@ -26,7 +103,7 @@ export function RomanceArchive() {
         setArmed(true)
         observer.disconnect()
       },
-      { rootMargin: '650px 0px', threshold: 0 },
+      { rootMargin: '900px 0px', threshold: 0 },
     )
     observer.observe(section)
     return () => observer.disconnect()
@@ -82,7 +159,7 @@ export function RomanceArchive() {
       return nextIds
     })
 
-    if (!image || !image.naturalWidth || !image.naturalHeight) return
+    if (!image || !image.naturalWidth || !image.naturalHeight || image.dataset.previewFallback === 'true') return
     const orientation = image.naturalHeight > image.naturalWidth ? 'portrait' : 'landscape'
     setPhotos((currentPhotos) => currentPhotos.map((photo) => {
       if (photo.id !== photoId) return photo
@@ -100,24 +177,13 @@ export function RomanceArchive() {
     }))
   }
 
-  function showEmbeddedPreview(photo: PhotoMemory, image: HTMLImageElement) {
-    if (image.dataset.displayFallback !== 'true' && photo.displaySrc && image.currentSrc !== photo.displaySrc) {
-      image.dataset.displayFallback = 'true'
-      image.srcset = ''
-      image.src = photo.displaySrc
-      return
-    }
-
-    if (image.dataset.previewFallback === 'true') return
-    image.dataset.previewFallback = 'true'
-    image.srcset = ''
-    image.src = photo.blurDataUrl
+  function markPreview(photoId: string) {
     setPreviewPhotoIds((currentIds) => {
       const nextIds = new Set(currentIds)
-      nextIds.add(photo.id)
+      nextIds.add(photoId)
       return nextIds
     })
-    markReady(photo.id)
+    markReady(photoId)
   }
 
   return (
@@ -139,12 +205,12 @@ export function RomanceArchive() {
           <p>
             {archiveSource === 'supabase'
               ? 'The live archive is connected. New photos added to each chapter can appear here automatically.'
-              : 'The archive is ready, with lightweight previews keeping every chapter visible while the full photographs are added.'}
+              : 'Every memory now checks each available storage location and keeps a built-in preview visible while loading.'}
           </p>
         </div>
         <div className={`archive-source-badge ${archiveSource}`}>
           <i />
-          {archiveSource === 'supabase' ? 'Live archive' : 'Preview archive'}
+          {archiveSource === 'supabase' ? 'Live archive' : 'Resilient preview'}
         </div>
       </div>
 
@@ -173,6 +239,7 @@ export function RomanceArchive() {
         {!loading && photos.map((photo, index) => {
           const isReady = loadedPhotoIds.has(photo.id)
           const isPreview = previewPhotoIds.has(photo.id)
+          const candidates = photoCandidates(photo)
           return (
             <button
               className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'} ${isPreview ? 'embedded-preview' : ''}`}
@@ -180,22 +247,31 @@ export function RomanceArchive() {
               onClick={() => { if (isReady) setSelected(index) }}
               aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Loading preview.`}
               aria-disabled={!isReady}
-              style={{ backgroundImage: `url(${photo.blurDataUrl})`, backgroundSize: 'cover', backgroundPosition: photo.position }}
+              style={{
+                backgroundImage: `linear-gradient(to top, rgba(8,4,7,.22), rgba(8,4,7,.02)), url(${photo.blurDataUrl})`,
+                backgroundSize: 'cover',
+                backgroundPosition: photo.position,
+              }}
             >
               <img
-                src={photo.thumbSrc}
-                srcSet={photo.thumbSrc === photo.displaySrc ? undefined : `${photo.thumbSrc} 480w, ${photo.displaySrc} 1280w`}
-                sizes="(max-width: 540px) 100vw, (max-width: 820px) 50vw, 34vw"
+                src={candidates[0] || photo.blurDataUrl}
+                data-candidate-index="0"
                 width={photo.width}
                 height={photo.height}
                 alt={photo.alt}
-                loading="lazy"
+                loading={index < 4 ? 'eager' : 'lazy'}
+                fetchPriority={index < 2 ? 'high' : 'auto'}
                 decoding="async"
                 style={{ objectPosition: photo.position }}
                 onLoad={(event) => markReady(photo.id, event.currentTarget)}
-                onError={(event) => showEmbeddedPreview(photo, event.currentTarget)}
+                onError={(event) => useNextImageCandidate(
+                  photo,
+                  event.currentTarget,
+                  false,
+                  () => markPreview(photo.id),
+                )}
               />
-              {isPreview && <span className="media-status">Preview · Full photograph pending</span>}
+              {isPreview && <span className="media-status">Built-in preview · full image reconnecting</span>}
               <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
               <div className="memory-caption">
                 <small>{album.title}</small>
@@ -208,47 +284,42 @@ export function RomanceArchive() {
 
       <div className="archive-next-blocks">
         <span>Storage chapters connected</span>
-        <p>Couple · Dublin · Alicante · More folders can be added later without rebuilding the gallery</p>
+        <p>Couple · Adventures · Alicante · Multiple path fallbacks now protect every gallery preview</p>
       </div>
 
-      {current && selected !== null && (
-        <div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={current.caption} onClick={() => setSelected(null)}>
-          <button className="lightbox-close" onClick={() => setSelected(null)} aria-label="Close photo">×</button>
-          <button
-            className="lightbox-arrow previous"
-            onClick={(event) => { event.stopPropagation(); setSelected((selected - 1 + photos.length) % photos.length) }}
-            aria-label="Previous photo"
-          >←</button>
-          <figure onClick={(event) => event.stopPropagation()}>
-            <img
-              src={current.displaySrc}
-              alt={current.alt}
-              style={{ objectPosition: current.position }}
-              decoding="async"
-              onError={(event) => {
-                const image = event.currentTarget
-                if (image.dataset.thumbFallback !== 'true' && current.thumbSrc !== current.displaySrc) {
-                  image.dataset.thumbFallback = 'true'
-                  image.src = current.thumbSrc
-                  return
-                }
-                if (image.dataset.previewFallback === 'true') return
-                image.dataset.previewFallback = 'true'
-                image.src = current.blurDataUrl
-              }}
-            />
-            <figcaption>
-              <span>{album.title}{previewPhotoIds.has(current.id) ? ' · Preview' : ''}</span>
-              <strong>{current.caption}</strong>
-            </figcaption>
-          </figure>
-          <button
-            className="lightbox-arrow next"
-            onClick={(event) => { event.stopPropagation(); setSelected((selected + 1) % photos.length) }}
-            aria-label="Next photo"
-          >→</button>
-        </div>
-      )}
+      {current && selected !== null && (() => {
+        const lightboxCandidates = photoCandidates(current, true)
+        return (
+          <div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={current.caption} onClick={() => setSelected(null)}>
+            <button className="lightbox-close" onClick={() => setSelected(null)} aria-label="Close photo">×</button>
+            <button
+              className="lightbox-arrow previous"
+              onClick={(event) => { event.stopPropagation(); setSelected((selected - 1 + photos.length) % photos.length) }}
+              aria-label="Previous photo"
+            >←</button>
+            <figure onClick={(event) => event.stopPropagation()}>
+              <img
+                key={current.id}
+                src={lightboxCandidates[0] || current.blurDataUrl}
+                data-candidate-index="0"
+                alt={current.alt}
+                style={{ objectPosition: current.position }}
+                decoding="async"
+                onError={(event) => useNextImageCandidate(current, event.currentTarget, true)}
+              />
+              <figcaption>
+                <span>{album.title}{previewPhotoIds.has(current.id) ? ' · Preview' : ''}</span>
+                <strong>{current.caption}</strong>
+              </figcaption>
+            </figure>
+            <button
+              className="lightbox-arrow next"
+              onClick={(event) => { event.stopPropagation(); setSelected((selected + 1) % photos.length) }}
+              aria-label="Next photo"
+            >→</button>
+          </div>
+        )
+      })()}
     </section>
   )
 }
