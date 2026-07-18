@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Reveal } from './Effects'
 import { MEDIA_BASE_URL } from '../config/media'
 import { albums, loadAlbum, totalPreparedMemories } from '../photoData/registry'
@@ -21,7 +21,7 @@ function unique(values: string[]) {
 function fileNameFromUrl(source: string) {
   if (!source || source.startsWith('data:')) return ''
   try {
-    return decodeURIComponent(new URL(source, window.location.origin).pathname.split('/').pop() || '')
+    return decodeURIComponent(new URL(source, MEDIA_BASE_URL).pathname.split('/').pop() || '')
   } catch {
     return source.split('/').pop() || ''
   }
@@ -40,11 +40,7 @@ function storageCandidates(source: string, photo: PhotoMemory) {
     source,
     `${MEDIA_BASE_URL}/${fileName}`,
     `${MEDIA_BASE_URL}/Photos/${folder}/${fileName}`,
-    `${MEDIA_BASE_URL}/photos/${folder}/${fileName}`,
-    `${MEDIA_BASE_URL}/Photos/${folder}/optimized/${fileName}`,
-    `${MEDIA_BASE_URL}/photos/${folder}/block-01/${fileName}`,
     `${MEDIA_BASE_URL}/Photos/${folder}/raw/${rawName}`,
-    `${MEDIA_BASE_URL}/photos/${folder}/raw/${rawName}`,
   ])
 }
 
@@ -53,31 +49,101 @@ function photoCandidates(photo: PhotoMemory, displayFirst = false) {
     ? [photo.displaySrc, photo.thumbSrc]
     : [photo.thumbSrc, photo.displaySrc]
 
-  return unique(preferred.flatMap((source) => storageCandidates(source, photo)))
+  return unique(preferred.flatMap((source) => (
+    source.startsWith('data:') ? [source] : storageCandidates(source, photo)
+  )))
 }
 
-function useNextImageCandidate(
-  photo: PhotoMemory,
-  image: HTMLImageElement,
-  displayFirst: boolean,
-  onPreview?: () => void,
-) {
-  const candidates = photoCandidates(photo, displayFirst)
-  const currentIndex = Number(image.dataset.candidateIndex || '0')
-  const nextIndex = currentIndex + 1
+function fallbackArtwork(photo: PhotoMemory) {
+  const escapedCaption = photo.caption.replace(/[<>&'\"]/g, '')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900" viewBox="0 0 720 900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#24101f"/><stop offset=".52" stop-color="#6d294f"/><stop offset="1" stop-color="#d7b77c"/></linearGradient></defs><rect width="720" height="900" fill="url(#g)"/><circle cx="590" cy="150" r="180" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/><text x="54" y="720" fill="#f4c66f" font-family="Georgia,serif" font-size="24">EMILY ARCHIVE</text><text x="54" y="772" fill="#fff" font-family="Georgia,serif" font-size="34">${escapedCaption}</text><text x="54" y="825" fill="rgba(255,255,255,.68)" font-family="Arial,sans-serif" font-size="18">Photograph reconnecting</text></svg>`
+  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
+}
 
-  if (nextIndex < candidates.length) {
-    image.dataset.candidateIndex = String(nextIndex)
-    image.removeAttribute('srcset')
-    image.src = candidates[nextIndex]
-    return
-  }
+type ProgressiveArchiveImageProps = {
+  photo: PhotoMemory
+  displayFirst?: boolean
+  eager?: boolean
+  trackStatus?: boolean
+  onPreview: (photoId: string) => void
+  onRemote: (photoId: string, image: HTMLImageElement) => void
+}
 
-  if (image.dataset.previewFallback === 'true') return
-  image.dataset.previewFallback = 'true'
-  image.removeAttribute('srcset')
-  image.src = photo.blurDataUrl
-  onPreview?.()
+function ProgressiveArchiveImage({
+  photo,
+  displayFirst = false,
+  eager = false,
+  trackStatus = true,
+  onPreview,
+  onRemote,
+}: ProgressiveArchiveImageProps) {
+  const candidates = useMemo(
+    () => photoCandidates(photo, displayFirst),
+    [photo.id, photo.thumbSrc, photo.displaySrc, photo.chapter, displayFirst],
+  )
+  const candidateKey = candidates.join('|')
+  const safePreview = photo.blurDataUrl || fallbackArtwork(photo)
+  const [source, setSource] = useState(safePreview)
+
+  useEffect(() => {
+    let cancelled = false
+    let activeLoader: HTMLImageElement | null = null
+    let candidateIndex = 0
+
+    setSource(safePreview)
+    if (trackStatus) onPreview(photo.id)
+
+    const loadNextCandidate = () => {
+      if (cancelled || candidateIndex >= candidates.length) return
+      const candidate = candidates[candidateIndex]
+      candidateIndex += 1
+
+      if (!candidate || candidate === safePreview) {
+        loadNextCandidate()
+        return
+      }
+
+      const loader = new Image()
+      activeLoader = loader
+      loader.decoding = 'async'
+      loader.onload = () => {
+        if (cancelled) return
+        setSource(candidate)
+        onRemote(photo.id, loader)
+      }
+      loader.onerror = loadNextCandidate
+      loader.src = candidate
+    }
+
+    const timer = window.setTimeout(loadNextCandidate, 0)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (activeLoader) {
+        activeLoader.onload = null
+        activeLoader.onerror = null
+      }
+    }
+  }, [candidateKey, photo.id, safePreview, trackStatus, onPreview, onRemote, candidates])
+
+  return (
+    <img
+      src={source}
+      width={photo.width}
+      height={photo.height}
+      alt={photo.alt}
+      loading={eager ? 'eager' : 'lazy'}
+      fetchPriority={eager ? 'high' : 'auto'}
+      decoding="async"
+      style={{ objectPosition: photo.position }}
+      onError={(event) => {
+        const image = event.currentTarget
+        if (image.dataset.artworkFallback === 'true') return
+        image.dataset.artworkFallback = 'true'
+        image.src = fallbackArtwork(photo)
+      }}
+    />
+  )
 }
 
 export function RomanceArchive() {
@@ -152,14 +218,20 @@ export function RomanceArchive() {
   )
   const archiveProgress = Math.min(organisedTotal || totalPreparedMemories, 100)
 
-  function markReady(photoId: string, image?: HTMLImageElement) {
-    setLoadedPhotoIds((currentIds) => {
+  const markPreview = useCallback((photoId: string) => {
+    setLoadedPhotoIds((currentIds) => new Set(currentIds).add(photoId))
+    setPreviewPhotoIds((currentIds) => new Set(currentIds).add(photoId))
+  }, [])
+
+  const markRemote = useCallback((photoId: string, image: HTMLImageElement) => {
+    setLoadedPhotoIds((currentIds) => new Set(currentIds).add(photoId))
+    setPreviewPhotoIds((currentIds) => {
       const nextIds = new Set(currentIds)
-      nextIds.add(photoId)
+      nextIds.delete(photoId)
       return nextIds
     })
 
-    if (!image || !image.naturalWidth || !image.naturalHeight || image.dataset.previewFallback === 'true') return
+    if (!image.naturalWidth || !image.naturalHeight) return
     const orientation = image.naturalHeight > image.naturalWidth ? 'portrait' : 'landscape'
     setPhotos((currentPhotos) => currentPhotos.map((photo) => {
       if (photo.id !== photoId) return photo
@@ -175,16 +247,7 @@ export function RomanceArchive() {
         orientation,
       }
     }))
-  }
-
-  function markPreview(photoId: string) {
-    setPreviewPhotoIds((currentIds) => {
-      const nextIds = new Set(currentIds)
-      nextIds.add(photoId)
-      return nextIds
-    })
-    markReady(photoId)
-  }
+  }, [])
 
   return (
     <section ref={sectionRef} className="romance-archive" id="memories" data-archive-source={archiveSource}>
@@ -205,12 +268,12 @@ export function RomanceArchive() {
           <p>
             {archiveSource === 'supabase'
               ? 'The live archive is connected. New photos added to each chapter can appear here automatically.'
-              : 'Every memory now checks each available storage location and keeps a built-in preview visible while loading.'}
+              : 'Every memory appears instantly from its built-in preview while the full photograph reconnects in the background.'}
           </p>
         </div>
         <div className={`archive-source-badge ${archiveSource}`}>
           <i />
-          {archiveSource === 'supabase' ? 'Live archive' : 'Resilient preview'}
+          {archiveSource === 'supabase' ? 'Live archive' : 'Instant previews'}
         </div>
       </div>
 
@@ -239,7 +302,6 @@ export function RomanceArchive() {
         {!loading && photos.map((photo, index) => {
           const isReady = loadedPhotoIds.has(photo.id)
           const isPreview = previewPhotoIds.has(photo.id)
-          const candidates = photoCandidates(photo)
           return (
             <button
               className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'} ${isPreview ? 'embedded-preview' : ''}`}
@@ -253,25 +315,13 @@ export function RomanceArchive() {
                 backgroundPosition: photo.position,
               }}
             >
-              <img
-                src={candidates[0] || photo.blurDataUrl}
-                data-candidate-index="0"
-                width={photo.width}
-                height={photo.height}
-                alt={photo.alt}
-                loading={index < 4 ? 'eager' : 'lazy'}
-                fetchPriority={index < 2 ? 'high' : 'auto'}
-                decoding="async"
-                style={{ objectPosition: photo.position }}
-                onLoad={(event) => markReady(photo.id, event.currentTarget)}
-                onError={(event) => useNextImageCandidate(
-                  photo,
-                  event.currentTarget,
-                  false,
-                  () => markPreview(photo.id),
-                )}
+              <ProgressiveArchiveImage
+                photo={photo}
+                eager={index < 4}
+                onPreview={markPreview}
+                onRemote={markRemote}
               />
-              {isPreview && <span className="media-status">Built-in preview · full image reconnecting</span>}
+              {isPreview && <span className="media-status">Preview ready · full photograph reconnecting</span>}
               <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
               <div className="memory-caption">
                 <small>{album.title}</small>
@@ -284,42 +334,39 @@ export function RomanceArchive() {
 
       <div className="archive-next-blocks">
         <span>Storage chapters connected</span>
-        <p>Couple · Adventures · Alicante · Multiple path fallbacks now protect every gallery preview</p>
+        <p>Couple · Adventures · Alicante · Built-in previews now protect every memory from broken-image gaps</p>
       </div>
 
-      {current && selected !== null && (() => {
-        const lightboxCandidates = photoCandidates(current, true)
-        return (
-          <div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={current.caption} onClick={() => setSelected(null)}>
-            <button className="lightbox-close" onClick={() => setSelected(null)} aria-label="Close photo">×</button>
-            <button
-              className="lightbox-arrow previous"
-              onClick={(event) => { event.stopPropagation(); setSelected((selected - 1 + photos.length) % photos.length) }}
-              aria-label="Previous photo"
-            >←</button>
-            <figure onClick={(event) => event.stopPropagation()}>
-              <img
-                key={current.id}
-                src={lightboxCandidates[0] || current.blurDataUrl}
-                data-candidate-index="0"
-                alt={current.alt}
-                style={{ objectPosition: current.position }}
-                decoding="async"
-                onError={(event) => useNextImageCandidate(current, event.currentTarget, true)}
-              />
-              <figcaption>
-                <span>{album.title}{previewPhotoIds.has(current.id) ? ' · Preview' : ''}</span>
-                <strong>{current.caption}</strong>
-              </figcaption>
-            </figure>
-            <button
-              className="lightbox-arrow next"
-              onClick={(event) => { event.stopPropagation(); setSelected((selected + 1) % photos.length) }}
-              aria-label="Next photo"
-            >→</button>
-          </div>
-        )
-      })()}
+      {current && selected !== null && (
+        <div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={current.caption} onClick={() => setSelected(null)}>
+          <button className="lightbox-close" onClick={() => setSelected(null)} aria-label="Close photo">×</button>
+          <button
+            className="lightbox-arrow previous"
+            onClick={(event) => { event.stopPropagation(); setSelected((selected - 1 + photos.length) % photos.length) }}
+            aria-label="Previous photo"
+          >←</button>
+          <figure onClick={(event) => event.stopPropagation()}>
+            <ProgressiveArchiveImage
+              key={current.id}
+              photo={current}
+              displayFirst
+              eager
+              trackStatus={false}
+              onPreview={markPreview}
+              onRemote={markRemote}
+            />
+            <figcaption>
+              <span>{album.title}{previewPhotoIds.has(current.id) ? ' · Preview' : ''}</span>
+              <strong>{current.caption}</strong>
+            </figcaption>
+          </figure>
+          <button
+            className="lightbox-arrow next"
+            onClick={(event) => { event.stopPropagation(); setSelected((selected + 1) % photos.length) }}
+            aria-label="Next photo"
+          >→</button>
+        </div>
+      )}
     </section>
   )
 }
