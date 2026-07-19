@@ -10,6 +10,10 @@ export type PhotoAlbum = {
   fallbackLoader: () => Promise<PhotoMemory[]>
 }
 
+export type ArchiveAlbumResult = Omit<StorageAlbumResult, 'source'> & {
+  source: 'supabase' | 'fallback'
+}
+
 async function loadCoupleFallback() {
   const [us, quiet, training, manySides] = await Promise.all([
     import('./usBlock').then((module) => module.default),
@@ -71,7 +75,7 @@ function photoKey(photo: PhotoMemory) {
     || photo.id.toLowerCase()
 }
 
-export async function loadAlbum(album: PhotoAlbum): Promise<StorageAlbumResult> {
+export async function loadAlbum(album: PhotoAlbum): Promise<ArchiveAlbumResult> {
   const localPhotos = (await album.fallbackLoader()).map((photo) => ({
     ...photo,
     source: photo.source || ('fallback' as const),
@@ -80,11 +84,10 @@ export async function loadAlbum(album: PhotoAlbum): Promise<StorageAlbumResult> 
   const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
   const localKeys = new Set(localPhotos.map(photoKey))
   const supabaseOnly = liveAlbum.photos.filter((photo) => !localKeys.has(photoKey(photo)))
-  const hasGitHubMedia = localPhotos.some((photo) => photo.source === 'github')
 
   return {
     photos: [...localPhotos, ...supabaseOnly],
-    source: hasGitHubMedia ? 'github' : supabaseOnly.length > 0 ? 'supabase' : 'fallback',
+    source: supabaseOnly.length > 0 && localPhotos.length === 0 ? 'supabase' : 'fallback',
     reason: liveAlbum.reason,
   }
 }
