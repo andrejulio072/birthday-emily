@@ -32,7 +32,7 @@ type StorageImageGroup = {
 
 export type StorageAlbumResult = {
   photos: PhotoMemory[]
-  source: 'supabase' | 'fallback'
+  source: 'github' | 'supabase' | 'fallback'
   reason?: 'missing-key' | 'empty-folder' | 'request-failed'
 }
 
@@ -42,7 +42,6 @@ function storageHeaders(): HeadersInit {
     'Content-Type': 'application/json',
   }
 
-  // Legacy anon keys are JWTs and can also be used as the bearer token.
   if (publishableKey.startsWith('eyJ')) {
     headers.Authorization = `Bearer ${publishableKey}`
   }
