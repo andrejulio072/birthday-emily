@@ -19,6 +19,8 @@ export type PhotoMemory = {
   orientation: 'portrait' | 'landscape'
   position: string
   chapter: PhotoChapter
-  source?: 'supabase' | 'fallback'
+  source?: 'github' | 'supabase' | 'fallback'
   storagePath?: string
+  fallbackThumbSrc?: string
+  fallbackDisplaySrc?: string
 }
