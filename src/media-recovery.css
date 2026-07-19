@@ -1,0 +1,67 @@
+/* Final media recovery: never present tiny blur placeholders as finished photographs. */
+
+.hero-photo-placeholder {
+  background-image:
+    linear-gradient(180deg, rgba(20, 8, 18, 0.02), rgba(20, 8, 18, 0.2)),
+    url('https://ujdkepevbkjwwotcmnvr.supabase.co/storage/v1/object/public/emily-birthday-media/Photos/us/us-006-1280.webp');
+  background-size: cover;
+  background-position: 50% 30%;
+  background-repeat: no-repeat;
+}
+
+.hero-photo-placeholder .media-placeholder-copy {
+  display: none !important;
+}
+
+/* The original /photos/hero.jpg file is optional. The Supabase portrait above is the visible fallback. */
+.hero-photo-placeholder .media-image:not(.loaded) {
+  opacity: 0;
+}
+
+.memory-card .media-status {
+  display: none !important;
+}
+
+.memory-card.media-pending {
+  background-image: linear-gradient(135deg, #24141f, #4b2e40 55%, #25151f) !important;
+}
+
+.memory-card.media-pending img {
+  opacity: 0 !important;
+}
+
+.memory-card.media-ready img {
+  opacity: 1 !important;
+  filter: none !important;
+  image-rendering: auto;
+}
+
+/* Small emergency previews are shown as framed photographs instead of being stretched across the card. */
+.memory-card.embedded-preview {
+  background-image: linear-gradient(145deg, #21121d, #5b3b4e 52%, #21121d) !important;
+}
+
+.memory-card.embedded-preview img {
+  width: calc(100% - 34px);
+  height: calc(100% - 132px);
+  margin: 17px;
+  border-radius: 20px;
+  object-fit: cover;
+  filter: none !important;
+  transform: none !important;
+  box-shadow: 0 18px 50px rgba(8, 4, 7, 0.34);
+}
+
+@media (max-width: 540px) {
+  .hero-photo-placeholder {
+    min-height: 610px;
+    background-position: 50% 27%;
+  }
+
+  .memory-card.embedded-preview img {
+    width: calc(100% - 24px);
+    height: calc(100% - 118px);
+    margin: 12px;
+    border-radius: 18px;
+  }
+}
