@@ -12,6 +12,7 @@ import './embedded-previews.css'
 import './theme-park.css'
 import './visual-refresh.css'
 import './storage-archive.css'
+import './media-recovery.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
