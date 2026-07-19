@@ -20,6 +20,24 @@ async function loadCoupleFallback() {
   return [...us, ...quiet, ...training, ...manySides]
 }
 
+async function loadAdventureFallback() {
+  const [original, adventure14, london15to17, london18to20, london21to23] = await Promise.all([
+    import('./adventuresBlock').then((module) => module.default),
+    import('./embedded/adventure014').then((module) => [module.default]),
+    import('./londonMagic15_17').then((module) => module.default),
+    import('./londonMagic18_20').then((module) => module.default),
+    import('./londonMagic21_23').then((module) => module.default),
+  ])
+
+  return [
+    ...original,
+    ...adventure14,
+    ...london15to17,
+    ...london18to20,
+    ...london21to23,
+  ]
+}
+
 export const albums: PhotoAlbum[] = [
   {
     id: 'us',
@@ -34,8 +52,8 @@ export const albums: PhotoAlbum[] = [
     storageFolder: 'Photos/adventures',
     title: 'Our Adventures',
     subtitle: 'Days out, rides, journeys and the places we discovered together',
-    count: 13,
-    fallbackLoader: () => import('./adventuresBlock').then((module) => module.default),
+    count: 23,
+    fallbackLoader: loadAdventureFallback,
   },
   {
     id: 'alicante',
@@ -47,14 +65,26 @@ export const albums: PhotoAlbum[] = [
   },
 ]
 
-export async function loadAlbum(album: PhotoAlbum): Promise<StorageAlbumResult> {
-  const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
-  if (liveAlbum.photos.length > 0) return liveAlbum
+function photoKey(photo: PhotoMemory) {
+  const searchable = `${photo.id} ${photo.storagePath || ''}`.toLowerCase()
+  return searchable.match(/(?:adventure|alicante|birthday|training|quiet|us|many-sides)-\d{3}/)?.[0]
+    || photo.id.toLowerCase()
+}
 
-  const fallbackPhotos = await album.fallbackLoader()
+export async function loadAlbum(album: PhotoAlbum): Promise<StorageAlbumResult> {
+  const localPhotos = (await album.fallbackLoader()).map((photo) => ({
+    ...photo,
+    source: photo.source || ('fallback' as const),
+  }))
+
+  const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
+  const localKeys = new Set(localPhotos.map(photoKey))
+  const supabaseOnly = liveAlbum.photos.filter((photo) => !localKeys.has(photoKey(photo)))
+  const hasGitHubMedia = localPhotos.some((photo) => photo.source === 'github')
+
   return {
-    photos: fallbackPhotos.map((photo) => ({ ...photo, source: 'fallback' as const })),
-    source: 'fallback',
+    photos: [...localPhotos, ...supabaseOnly],
+    source: hasGitHubMedia ? 'github' : supabaseOnly.length > 0 ? 'supabase' : 'fallback',
     reason: liveAlbum.reason,
   }
 }
