@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { photoSourceCandidates, type PhotoVariant } from '../photoData/sourceCandidates'
 import type { PhotoMemory } from '../photoData/types'
 
@@ -44,16 +44,20 @@ export function ResolvedPhoto({
   )
   const candidateKey = candidates.join('|')
   const [candidateIndex, setCandidateIndex] = useState(0)
+  const reportedExhaustion = useRef('')
 
   useEffect(() => {
     setCandidateIndex(0)
+    reportedExhaustion.current = ''
   }, [candidateKey])
 
   const source = candidates[candidateIndex]
 
   useEffect(() => {
-    if (!source) onExhausted?.()
-  }, [source, onExhausted])
+    if (source || reportedExhaustion.current === candidateKey) return
+    reportedExhaustion.current = candidateKey
+    onExhausted?.()
+  }, [source, candidateKey, onExhausted])
 
   if (!source) return null
 
