@@ -17,7 +17,7 @@ function sourceWorks(source: string) {
       image.onload = null
       image.onerror = null
       resolve(false)
-    }, 5000)
+    }, 2400)
 
     image.onload = () => {
       window.clearTimeout(timer)
@@ -27,6 +27,7 @@ function sourceWorks(source: string) {
       window.clearTimeout(timer)
       resolve(false)
     }
+    image.decoding = 'async'
     image.src = source
   })
 
@@ -34,15 +35,48 @@ function sourceWorks(source: string) {
   return check
 }
 
-async function resolveReasonPhoto(photo: PhotoMemory) {
-  for (const source of photoSourceCandidates(photo, 'thumb')) {
-    if (await sourceWorks(source)) return source
-  }
-  return null
+async function resolveBestRemotePhoto(photo: PhotoMemory) {
+  const remoteSources = photoSourceCandidates(photo, 'thumb')
+    .filter((source) => !source.startsWith('data:image/'))
+    .slice(0, 14)
+
+  if (remoteSources.length === 0) return null
+
+  return new Promise<string | null>((resolve) => {
+    let pending = remoteSources.length
+    let settled = false
+
+    remoteSources.forEach((source) => {
+      void sourceWorks(source).then((works) => {
+        if (settled) return
+        if (works) {
+          settled = true
+          resolve(source)
+          return
+        }
+
+        pending -= 1
+        if (pending === 0) resolve(null)
+      })
+    })
+  })
+}
+
+function immediateFallback(photo: PhotoMemory) {
+  return photoSourceCandidates(photo, 'thumb')
+    .find((source) => source.startsWith('data:image/')) || null
 }
 
 function cssUrl(source: string) {
   return `url(${JSON.stringify(source)})`
+}
+
+function applySource(card: HTMLElement, photo: PhotoMemory, source: string, quality: 'preview' | 'full') {
+  card.style.setProperty('--reason-photo', cssUrl(source))
+  card.classList.add('reason-photo-ready')
+  card.dataset.photoState = 'ready'
+  card.dataset.photoQuality = quality
+  card.dataset.photoId = photo.id
 }
 
 export function PhotoCardRecovery() {
@@ -61,17 +95,12 @@ export function PhotoCardRecovery() {
         card.dataset.photoId = photo.id
         card.dataset.photoState = 'loading'
 
-        void resolveReasonPhoto(photo).then((source) => {
-          if (!active || card.dataset.photoId !== photo.id) return
+        const fallback = immediateFallback(photo)
+        if (fallback) applySource(card, photo, fallback, 'preview')
 
-          if (!source) {
-            card.dataset.photoState = 'unavailable'
-            return
-          }
-
-          card.style.setProperty('--reason-photo', cssUrl(source))
-          card.classList.add('reason-photo-ready')
-          card.dataset.photoState = 'ready'
+        void resolveBestRemotePhoto(photo).then((source) => {
+          if (!active || !source || card.dataset.photoId !== photo.id) return
+          applySource(card, photo, source, 'full')
         })
       })
 
