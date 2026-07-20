@@ -35,7 +35,7 @@ export function normaliseMediaPath(path: string) {
     return `Photos/adventures/${fileName}`
   }
 
-  if (/^photos\/alicante\//i.test(cleanPath)) {
+  if (/^photos\/(?:trips\/)?alicante\//i.test(cleanPath)) {
     return `Photos/alicante/${fileName}`
   }
 
