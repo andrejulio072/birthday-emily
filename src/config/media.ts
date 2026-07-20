@@ -4,13 +4,6 @@ export const MEDIA_BASE_URL = (
   import.meta.env.VITE_MEDIA_BASE_URL || defaultMediaBaseUrl
 ).replace(/\/$/, '')
 
-function numberedFile(fileName: string, offset: number) {
-  const match = fileName.match(/^(?:quiet|training|many-sides)-(\d{3})(-.+)$/i)
-  if (!match) return fileName
-  const number = Number(match[1]) + offset
-  return `us-${String(number).padStart(3, '0')}${match[2]}`
-}
-
 export function normaliseMediaPath(path: string) {
   const cleanPath = path.replace(/^\//, '')
   const fileName = cleanPath.split('/').pop() || cleanPath
@@ -20,15 +13,15 @@ export function normaliseMediaPath(path: string) {
   }
 
   if (/^photos\/quiet-days\//i.test(cleanPath)) {
-    return `Photos/us/${numberedFile(fileName, 4)}`
+    return `Photos/quiet-days/${fileName}`
   }
 
   if (/^photos\/training\//i.test(cleanPath)) {
-    return `Photos/us/${numberedFile(fileName, 12)}`
+    return `Photos/training/${fileName}`
   }
 
   if (/^photos\/many-sides\//i.test(cleanPath)) {
-    return `Photos/us/${numberedFile(fileName, 15)}`
+    return `Photos/many-sides/${fileName}`
   }
 
   if (/^(?:photos\/adventures\/|adventure-)/i.test(cleanPath)) {
