@@ -7,10 +7,10 @@ import type { PhotoMemory } from '../photoData/types'
 const chapterFolders: Record<PhotoMemory['chapter'], string> = {
   birthday: 'birthday',
   us: 'us',
-  quiet: 'us',
+  quiet: 'quiet-days',
   adventures: 'adventures',
-  training: 'us',
-  'many-sides': 'us',
+  training: 'training',
+  'many-sides': 'many-sides',
   alicante: 'alicante',
 }
 
@@ -45,6 +45,10 @@ function storageCandidates(source: string, photo: PhotoMemory) {
   ])
 }
 
+function isFullEmbeddedPhoto(source: string | undefined) {
+  return Boolean(source?.startsWith('data:image/') && source.length > 800)
+}
+
 function photoCandidates(photo: PhotoMemory) {
   const preferred = [
     photo.fallbackDisplaySrc,
@@ -53,9 +57,19 @@ function photoCandidates(photo: PhotoMemory) {
     photo.thumbSrc,
   ]
 
-  return unique(preferred.flatMap((source) => (
-    source && !source.startsWith('data:') ? storageCandidates(source, photo) : []
-  )))
+  const remoteSources = preferred.filter(
+    (source): source is string => typeof source === 'string' && !source.startsWith('data:'),
+  )
+  const embeddedSources = preferred.filter(
+    (source): source is string => typeof source === 'string' && source.startsWith('data:image/'),
+  )
+  const embeddedFullPhoto = isFullEmbeddedPhoto(photo.blurDataUrl) ? [photo.blurDataUrl] : []
+
+  return unique([
+    ...remoteSources.flatMap((source) => storageCandidates(source, photo)),
+    ...embeddedSources,
+    ...embeddedFullPhoto,
+  ])
 }
 
 function fallbackArtwork(photo: PhotoMemory) {
@@ -77,6 +91,7 @@ function ArchiveImage({ photo, eager = false, onReady }: ArchiveImageProps) {
     photo.displaySrc,
     photo.fallbackThumbSrc,
     photo.fallbackDisplaySrc,
+    photo.blurDataUrl,
     photo.chapter,
   ])
   const candidateKey = candidates.join('|')
@@ -251,7 +266,7 @@ export function RomanceArchive() {
       <Reveal className="section-heading archive-heading">
         <p className="eyebrow">The real love story</p>
         <h2>More than a case file.<br /><em>These are us.</em></h2>
-        <p>All 59 photographs are organised here as full images, with the same clean presentation in every chapter.</p>
+        <p>All {totalPreparedMemories} photographs are organised here as full images, with the same clean presentation in every chapter.</p>
       </Reveal>
 
       <div className="archive-dashboard">
@@ -314,7 +329,7 @@ export function RomanceArchive() {
       </div>
 
       <div className="archive-next-blocks">
-        <span>59 photographs connected</span>
+        <span>{totalPreparedMemories} photographs connected</span>
         <p>Chapter 30 · Us · Adventures · Alicante</p>
       </div>
 
