@@ -112,7 +112,7 @@ function photoCandidates(photo: PhotoMemory) {
     photo.displaySrc,
     photo.fallbackThumbSrc,
     photo.thumbSrc,
-  ].filter((source): source is string => Boolean(source) && !source.startsWith('data:'))
+  ].filter((source): source is string => typeof source === 'string' && !source.startsWith('data:'))
 
   const ownEmbeddedSources = [
     photo.fallbackDisplaySrc,
@@ -120,7 +120,7 @@ function photoCandidates(photo: PhotoMemory) {
     photo.fallbackThumbSrc,
     photo.thumbSrc,
     photo.blurDataUrl,
-  ].filter((source): source is string => Boolean(source) && source.startsWith('data:image/'))
+  ].filter((source): source is string => typeof source === 'string' && source.startsWith('data:image/'))
 
   return uniqueSources([
     ...exactSupabasePaths,
