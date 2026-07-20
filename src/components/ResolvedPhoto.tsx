@@ -38,26 +38,78 @@ export function ResolvedPhoto({
       photo.fallbackThumbSrc,
       photo.fallbackDisplaySrc,
       photo.storagePath,
+      photo.blurDataUrl,
       variant,
       extraKey,
     ],
   )
   const candidateKey = candidates.join('|')
-  const [candidateIndex, setCandidateIndex] = useState(0)
+  const previewSource = candidates.find((candidate) => candidate.startsWith('data:image/')) || ''
+  const remoteCandidates = candidates.filter((candidate) => !candidate.startsWith('data:image/'))
+  const [source, setSource] = useState(() => previewSource || remoteCandidates[0] || '')
+  const [quality, setQuality] = useState<'preview' | 'full'>(() => previewSource ? 'preview' : 'full')
   const reportedExhaustion = useRef('')
 
   useEffect(() => {
-    setCandidateIndex(0)
+    let cancelled = false
+    let activeImage: HTMLImageElement | null = null
+    let timer = 0
+    let index = 0
+
+    setSource(previewSource || remoteCandidates[0] || '')
+    setQuality(previewSource ? 'preview' : 'full')
     reportedExhaustion.current = ''
-  }, [candidateKey])
 
-  const source = candidates[candidateIndex]
+    const finishWithoutRemote = () => {
+      if (previewSource || reportedExhaustion.current === candidateKey) return
+      reportedExhaustion.current = candidateKey
+      onExhausted?.()
+    }
 
-  useEffect(() => {
-    if (source || reportedExhaustion.current === candidateKey) return
-    reportedExhaustion.current = candidateKey
-    onExhausted?.()
-  }, [source, candidateKey, onExhausted])
+    const tryNextRemote = () => {
+      if (cancelled) return
+      const candidate = remoteCandidates[index]
+      index += 1
+
+      if (!candidate) {
+        finishWithoutRemote()
+        return
+      }
+
+      const image = new Image()
+      activeImage = image
+      timer = window.setTimeout(() => {
+        image.onload = null
+        image.onerror = null
+        tryNextRemote()
+      }, 2600)
+
+      image.onload = () => {
+        window.clearTimeout(timer)
+        if (cancelled) return
+        setSource(candidate)
+        setQuality('full')
+      }
+      image.onerror = () => {
+        window.clearTimeout(timer)
+        tryNextRemote()
+      }
+      image.decoding = 'async'
+      image.src = candidate
+    }
+
+    if (remoteCandidates.length > 0) tryNextRemote()
+    else finishWithoutRemote()
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (activeImage) {
+        activeImage.onload = null
+        activeImage.onerror = null
+      }
+    }
+  }, [candidateKey, previewSource, onExhausted])
 
   if (!source) return null
 
@@ -76,6 +128,7 @@ export function ResolvedPhoto({
       style={{ objectPosition: photo.position }}
       data-photo-id={photo.id}
       data-photo-variant={variant}
+      data-photo-quality={quality}
       onLoad={(event) => {
         const image = event.currentTarget
         onResolved?.({
@@ -84,7 +137,11 @@ export function ResolvedPhoto({
           height: image.naturalHeight,
         })
       }}
-      onError={() => setCandidateIndex((current) => current + 1)}
+      onError={() => {
+        if (!previewSource || source === previewSource) return
+        setSource(previewSource)
+        setQuality('preview')
+      }}
     />
   )
 }
