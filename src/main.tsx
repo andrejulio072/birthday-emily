@@ -8,12 +8,10 @@ import './performance.css'
 import './romance.css'
 import './romance-block02.css'
 import './album-themes.css'
-import './embedded-previews.css'
 import './theme-park.css'
 import './visual-refresh.css'
 import './storage-archive.css'
-import './media-recovery.css'
-import './photo-cards.css'
+import './gallery-overhaul.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
