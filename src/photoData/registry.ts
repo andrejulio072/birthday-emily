@@ -48,7 +48,7 @@ export const albums: PhotoAlbum[] = [
     storageFolder: 'Photos/birthday',
     title: 'Chapter 30',
     subtitle: 'The birthday girl and the beginning of her next era',
-    count: 7,
+    count: 5,
     fallbackLoader: () => import('./birthdayBlock').then((module) => module.default),
   },
   {
