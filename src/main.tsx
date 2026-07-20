@@ -13,6 +13,7 @@ import './visual-refresh.css'
 import './storage-archive.css'
 import './gallery-overhaul.css'
 import './gallery-final-fixes.css'
+import './site-audit-fixes.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
