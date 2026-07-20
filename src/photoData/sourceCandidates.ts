@@ -47,12 +47,33 @@ function embeddedOnly(values: Array<string | undefined>) {
   return values.filter((value): value is string => Boolean(value?.startsWith('data:image/')))
 }
 
+function chapterPaths(photo: PhotoMemory, fileName: string) {
+  const folder = chapterFolders[photo.chapter]
+  const lowerCasePaths = photo.chapter === 'alicante'
+    ? [
+        `photos/trips/alicante/block-01/${fileName}`,
+        `photos/alicante/block-01/${fileName}`,
+        `photos/alicante/${fileName}`,
+      ]
+    : [
+        `photos/${folder}/block-01/${fileName}`,
+        `photos/${folder}/${fileName}`,
+      ]
+
+  return [
+    ...lowerCasePaths,
+    `Photos/${folder}/block-01/${fileName}`,
+    `Photos/${folder}/${fileName}`,
+    `optimized-root/${fileName}`,
+    fileName,
+  ].map(storageUrl)
+}
+
 export function photoSourceCandidates(
   photo: PhotoMemory,
   variant: PhotoVariant,
   extraCandidates: string[] = [],
 ) {
-  const folder = chapterFolders[photo.chapter]
   const primary = variant === 'display'
     ? [photo.displaySrc, photo.fallbackDisplaySrc]
     : [photo.thumbSrc, photo.fallbackThumbSrc]
@@ -67,20 +88,34 @@ export function photoSourceCandidates(
   ])
 
   const preferredNames = variant === 'display'
-    ? [`${photo.id}-1920.webp`, `${photo.id}-1600.webp`, `${photo.id}-1280.webp`, `${photo.id}.webp`, `${photo.id}.jpg`]
-    : [`${photo.id}-480.webp`, `${photo.id}-640.webp`, `${photo.id}.webp`, `${photo.id}.jpg`]
+    ? [
+        `${photo.id}-1920.webp`,
+        `${photo.id}-1600.webp`,
+        `${photo.id}-1280.webp`,
+        `${photo.id}-480.webp`,
+        `${photo.id}.webp`,
+        `${photo.id}.jpg`,
+      ]
+    : [
+        `${photo.id}-480.webp`,
+        `${photo.id}-640.webp`,
+        `${photo.id}-1280.webp`,
+        `${photo.id}.webp`,
+        `${photo.id}.jpg`,
+      ]
 
-  const canonicalNames = unique([...suppliedFileNames, ...preferredNames])
-  const canonicalSources = canonicalNames.flatMap((fileName) => [
-    storageUrl(`Photos/${folder}/${fileName}`),
-    storageUrl(`Photos/${folder}/block-01/${fileName}`),
-  ])
+  const canonicalSources = unique([...suppliedFileNames, ...preferredNames])
+    .flatMap((fileName) => chapterPaths(photo, fileName))
 
+  const folder = chapterFolders[photo.chapter]
   const rawSources = variant === 'display'
     ? [
         storageUrl(`Photos/${folder}/raw/${photo.id}.jpg`),
         storageUrl(`Photos/${folder}/raw/${photo.id}.jpeg`),
         storageUrl(`Photos/${folder}/raw/${photo.id}.png`),
+        storageUrl(`photos/${folder}/raw/${photo.id}.jpg`),
+        storageUrl(`photos/${folder}/raw/${photo.id}.jpeg`),
+        storageUrl(`photos/${folder}/raw/${photo.id}.png`),
       ]
     : []
 
@@ -93,5 +128,6 @@ export function photoSourceCandidates(
     ...remoteOnly(secondary),
     ...embeddedOnly(primary),
     ...embeddedOnly(secondary),
+    photo.blurDataUrl,
   ])
 }
