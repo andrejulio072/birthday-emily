@@ -1,0 +1,32 @@
+/* Final conflict resets after the gallery rebuild. */
+
+.romance-archive .memory-grid .memory-card::after,
+.romance-archive .memory-grid .memory-card.media-pending::after,
+.romance-archive .memory-grid .memory-card.media-ready::after,
+.romance-archive .memory-grid .memory-card.media-failed::after {
+  transform: none !important;
+  animation: none !important;
+}
+
+.romance-archive .memory-grid .memory-card.media-pending::after {
+  z-index: 1;
+}
+
+.memory-lightbox {
+  justify-items: stretch;
+  touch-action: pan-y;
+}
+
+.memory-lightbox .lightbox-frame {
+  place-self: center;
+}
+
+.memory-lightbox .lightbox-arrow {
+  touch-action: manipulation;
+}
+
+@media (max-width: 780px) {
+  .memory-lightbox {
+    justify-items: stretch;
+  }
+}
