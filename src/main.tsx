@@ -13,6 +13,7 @@ import './theme-park.css'
 import './visual-refresh.css'
 import './storage-archive.css'
 import './media-recovery.css'
+import './photo-cards.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
