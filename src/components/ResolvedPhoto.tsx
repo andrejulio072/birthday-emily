@@ -49,6 +49,11 @@ export function ResolvedPhoto({
   const [source, setSource] = useState(() => previewSource || remoteCandidates[0] || '')
   const [quality, setQuality] = useState<'preview' | 'full'>(() => previewSource ? 'preview' : 'full')
   const reportedExhaustion = useRef('')
+  const onExhaustedRef = useRef(onExhausted)
+
+  useEffect(() => {
+    onExhaustedRef.current = onExhausted
+  }, [onExhausted])
 
   useEffect(() => {
     let cancelled = false
@@ -63,7 +68,7 @@ export function ResolvedPhoto({
     const finishWithoutRemote = () => {
       if (previewSource || reportedExhaustion.current === candidateKey) return
       reportedExhaustion.current = candidateKey
-      onExhausted?.()
+      onExhaustedRef.current?.()
     }
 
     const tryNextRemote = () => {
@@ -109,7 +114,7 @@ export function ResolvedPhoto({
         activeImage.onerror = null
       }
     }
-  }, [candidateKey, previewSource, onExhausted])
+  }, [candidateKey, previewSource])
 
   if (!source) return null
 
