@@ -5,15 +5,13 @@ const publishableKey = 'sb_publishable_Wron3ni9wWjQ5OR7x8gOAA_uJd2dcd4'
 const folders = [
   '',
   'Photos',
-  'photos',
   'Photos/birthday',
-  'photos/birthday',
   'Photos/us',
-  'photos/us',
+  'Photos/quiet-days',
+  'Photos/training',
+  'Photos/many-sides',
   'Photos/adventures',
-  'photos/adventures',
   'Photos/alicante',
-  'photos/alicante',
 ]
 
 async function listFolder(prefix) {
@@ -37,8 +35,11 @@ async function listFolder(prefix) {
     ok: result.ok,
     status: result.status,
     count: Array.isArray(body) ? body.length : 0,
-    items: Array.isArray(body)
-      ? body.slice(0, 12).map((item) => ({ name: item.name, id: item.id || null, metadata: item.metadata || null }))
+    files: Array.isArray(body)
+      ? body.filter((item) => item.id || item.metadata).map((item) => item.name)
+      : [],
+    folders: Array.isArray(body)
+      ? body.filter((item) => !item.id && !item.metadata).map((item) => item.name)
       : [],
     error: result.ok ? null : body,
   }
