@@ -78,24 +78,21 @@ export const albums: PhotoAlbum[] = [
 ]
 
 export async function loadAlbum(album: PhotoAlbum): Promise<ArchiveAlbumResult> {
-  const localPhotos = (await album.fallbackLoader()).map((photo) => ({
+  const localPhotos = await album.fallbackLoader()
+  const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
+  const hasLiveMedia = liveAlbum.photos.length > 0
+
+  // Curated metadata controls captions, cropping and order. Supabase only confirms
+  // that the public archive is connected; it never replaces that metadata with
+  // filename-generated values or guessed image orientations.
+  const photos = localPhotos.map((photo) => ({
     ...photo,
-    source: photo.source || ('fallback' as const),
+    source: hasLiveMedia ? ('supabase' as const) : photo.source || ('fallback' as const),
   }))
 
-  const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
-
-  if (liveAlbum.photos.length >= localPhotos.length && liveAlbum.photos.length > 0) {
-    return {
-      photos: liveAlbum.photos,
-      source: 'supabase',
-      reason: liveAlbum.reason,
-    }
-  }
-
   return {
-    photos: localPhotos,
-    source: 'fallback',
+    photos,
+    source: hasLiveMedia ? 'supabase' : 'fallback',
     reason: liveAlbum.reason,
   }
 }
