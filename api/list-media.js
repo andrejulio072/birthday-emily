@@ -13,7 +13,7 @@ function storageHeaders() {
   const headers = { 'Content-Type': 'application/json' }
   if (key) {
     headers.apikey = key
-    if (key.startsWith('eyJ')) headers.Authorization = `Bearer ${key}`
+    headers.Authorization = `Bearer ${key}`
   }
   return headers
 }
