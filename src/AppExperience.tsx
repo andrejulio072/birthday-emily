@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import AppMobileOptimized from './AppMobileOptimized'
 import { MusicSection } from './components/MusicSection'
+import { PhotoCardRecovery } from './components/PhotoCardRecovery'
 import { RomanceArchive } from './components/RomanceArchive'
 import { ThemeParkJourney } from './components/ThemeParkJourney'
 
@@ -44,6 +45,7 @@ function AppExperience() {
   return (
     <>
       <AppMobileOptimized />
+      <PhotoCardRecovery />
       {targets.park && createPortal(<ThemeParkJourney />, targets.park)}
       {targets.music && createPortal(<MusicSection />, targets.music)}
       {targets.memories && createPortal(<RomanceArchive />, targets.memories)}
