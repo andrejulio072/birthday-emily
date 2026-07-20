@@ -38,7 +38,9 @@ function AppExperience() {
     return () => {
       parkMount.remove()
       musicMount.remove()
-      memoriesMount.remove()
+      if (memoriesMount.parentNode) {
+        memoriesMount.replaceWith(oldMemories)
+      }
     }
   }, [])
 

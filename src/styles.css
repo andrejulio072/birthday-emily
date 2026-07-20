@@ -176,7 +176,7 @@ section { position: relative; padding: 96px max(22px, calc((100vw - 1180px)/2));
 .reason-card.open p { margin-top: 22px; color: rgba(247,238,232,.82); font-size: 15px; }
 
 .video-section { display: grid; grid-template-columns: 1.15fr .85fr; gap: 60px; align-items: center; }
-.video-frame { aspect-ratio: 16 / 10; display: grid; place-items: center; align-content: center; border: 1px solid rgba(247,238,232,.13); border-radius: 24px; background: radial-gradient(circle, rgba(228,184,198,.15), rgba(24,13,22,.65)); }
+.video-frame { position: relative; aspect-ratio: 16 / 10; display: grid; place-items: center; align-content: center; border: 1px solid rgba(247,238,232,.13); border-radius: 24px; background: radial-gradient(circle, rgba(228,184,198,.15), rgba(24,13,22,.65)); }
 .play-icon { display: grid; place-items: center; width: 70px; height: 70px; margin-bottom: 20px; padding-left: 4px; border: 1px solid var(--gold); border-radius: 50%; color: var(--gold); }
 .video-copy h2 { font-size: clamp(42px, 6vw, 72px); }
 .video-copy > p:last-child { color: rgba(247,238,232,.64); line-height: 1.75; }
@@ -278,7 +278,7 @@ footer { display: flex; align-items: center; justify-content: space-between; gap
 }
 
 .birthday-video {
-  object-fit: cover;
+  object-fit: contain;
   background: #10090f;
 }
 

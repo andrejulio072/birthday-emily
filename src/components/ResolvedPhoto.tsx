@@ -126,8 +126,8 @@ export function ResolvedPhoto({
       width={photo.width}
       height={photo.height}
       alt={photo.alt}
-      loading={eager ? 'eager' : 'lazy'}
-      fetchPriority={eager ? 'high' : 'auto'}
+      loading={eager || quality === 'preview' ? 'eager' : 'lazy'}
+      fetchPriority={eager || quality === 'preview' ? 'high' : 'auto'}
       decoding="async"
       draggable={false}
       style={{ objectPosition: photo.position }}

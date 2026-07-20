@@ -123,6 +123,7 @@ export function VideoSlot() {
           controls
           playsInline
           preload="metadata"
+          poster="/video/message-poster.jpg"
           onLoadedMetadata={() => setReady(true)}
           onError={() => setFailed(true)}
         >
@@ -132,7 +133,7 @@ export function VideoSlot() {
       {!ready && (
         <div className="video-placeholder-copy">
           <div className="play-icon">▶</div>
-          <p>Your video message</p>
+          <p>Andre’s video message</p>
           <small>/video/message.mp4</small>
         </div>
       )}

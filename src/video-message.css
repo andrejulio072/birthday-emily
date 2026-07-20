@@ -1,0 +1,8 @@
+.video-section .video-frame {
+  position: relative;
+}
+
+.video-section .birthday-video {
+  object-fit: contain;
+  background: #10090f;
+}

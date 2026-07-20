@@ -371,15 +371,6 @@ function AppMobileOptimized() {
           </div>
         </section>
 
-        <section className="section-plum video-section" id="message">
-          <Reveal><VideoSlot /></Reveal>
-          <Reveal className="video-copy" delay={160}>
-            <p className="eyebrow">In my own voice</p>
-            <h2>Some things needed to be said properly.</h2>
-            <p>The jokes end here for a moment. This space is for the message only you can record and only she can hear in your voice.</p>
-          </Reveal>
-        </section>
-
         <section className="section-paper promise-section" id="promise">
           <Reveal>
             <div className="promise-mark">♡</div>
@@ -398,6 +389,15 @@ function AppMobileOptimized() {
                 playChime(soundOn, [392, 523.25, 659.25, 783.99, 1046.5])
               }}
             />
+          </Reveal>
+        </section>
+
+        <section className="section-plum video-section" id="message">
+          <Reveal><VideoSlot /></Reveal>
+          <Reveal className="video-copy" delay={160}>
+            <p className="eyebrow">In my own voice</p>
+            <h2>Some things needed to be said properly.</h2>
+            <p>The jokes end here for a moment. This is the message only you can give her in your voice.</p>
           </Reveal>
         </section>
 
