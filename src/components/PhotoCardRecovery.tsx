@@ -69,10 +69,15 @@ function storageUrl(path: string) {
 }
 
 function storageFolder(photo: PhotoMemory) {
-  if (photo.chapter === 'birthday') return 'birthday'
-  if (photo.chapter === 'adventures') return 'adventures'
-  if (photo.chapter === 'alicante') return 'alicante'
-  return 'us'
+  switch (photo.chapter) {
+    case 'birthday': return 'birthday'
+    case 'us': return 'us'
+    case 'quiet': return 'quiet-days'
+    case 'training': return 'training'
+    case 'many-sides': return 'many-sides'
+    case 'adventures': return 'adventures'
+    case 'alicante': return 'alicante'
+  }
 }
 
 function photoCandidates(photo: PhotoMemory) {
@@ -120,7 +125,17 @@ function photoCandidates(photo: PhotoMemory) {
     photo.fallbackThumbSrc,
     photo.thumbSrc,
     photo.blurDataUrl,
-  ].filter((source): source is string => typeof source === 'string' && source.startsWith('data:image/'))
+  ].filter((source): source is string => (
+    typeof source === 'string' &&
+    source.startsWith('data:image/') &&
+    (
+      source === photo.displaySrc ||
+      source === photo.thumbSrc ||
+      source === photo.fallbackDisplaySrc ||
+      source === photo.fallbackThumbSrc ||
+      source.length > 800
+    )
+  ))
 
   return uniqueSources([
     ...exactSupabasePaths,
