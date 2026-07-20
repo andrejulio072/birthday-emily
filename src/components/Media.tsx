@@ -1,4 +1,5 @@
 import { type PointerEvent as ReactPointerEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { MEDIA_BASE_URL } from '../config/media'
 
 export function Typewriter({
   lines,
@@ -40,6 +41,10 @@ export function Typewriter({
   )
 }
 
+function uniqueSources(values: string[]) {
+  return [...new Set(values.filter(Boolean))]
+}
+
 export function PhotoSlot({
   src,
   alt,
@@ -51,24 +56,55 @@ export function PhotoSlot({
   className: string
   label: string
 }) {
+  const candidates = useMemo(() => {
+    if (!className.includes('hero-photo-placeholder')) return [src]
+
+    return uniqueSources([
+      `${MEDIA_BASE_URL}/Photos/birthday/birthday-001-1280.webp`,
+      `${MEDIA_BASE_URL}/Photos/birthday/block-01/birthday-001-1280.webp`,
+      `${MEDIA_BASE_URL}/Photos/birthday/birthday-001-480.webp`,
+      `${MEDIA_BASE_URL}/Photos/us/us-006-1280.webp`,
+      src,
+    ])
+  }, [className, src])
+
+  const candidateKey = candidates.join('|')
+  const [candidateIndex, setCandidateIndex] = useState(0)
   const [loaded, setLoaded] = useState(false)
   const [failed, setFailed] = useState(false)
 
+  useEffect(() => {
+    setCandidateIndex(0)
+    setLoaded(false)
+    setFailed(false)
+  }, [candidateKey])
+
+  const currentSource = candidates[candidateIndex]
+
   return (
     <div className={className}>
-      {!failed && (
+      {!failed && currentSource && (
         <img
           className={loaded ? 'media-image loaded' : 'media-image'}
-          src={src}
+          src={currentSource}
           alt={alt}
+          loading={className.includes('hero-photo-placeholder') ? 'eager' : 'lazy'}
+          fetchPriority={className.includes('hero-photo-placeholder') ? 'high' : 'auto'}
+          decoding="async"
           onLoad={() => setLoaded(true)}
-          onError={() => setFailed(true)}
+          onError={() => {
+            if (candidateIndex < candidates.length - 1) {
+              setCandidateIndex((current) => current + 1)
+              setLoaded(false)
+              return
+            }
+            setFailed(true)
+          }}
         />
       )}
       {!loaded && (
         <div className="media-placeholder-copy">
           <span>{label}</span>
-          <small>{src}</small>
         </div>
       )}
     </div>
