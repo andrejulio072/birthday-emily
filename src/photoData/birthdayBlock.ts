@@ -67,32 +67,6 @@ const photos: PhotoMemory[] = [
     position: '50% 28%',
     chapter: 'birthday',
   },
-  {
-    id: 'birthday-006',
-    thumbSrc: mediaUrl('photos/birthday/block-01/birthday-006-480.webp'),
-    displaySrc: mediaUrl('photos/birthday/block-01/birthday-006-1280.webp'),
-    blurDataUrl: '',
-    width: 960,
-    height: 1280,
-    alt: 'Emily — Chapter thirty looks beautiful on you',
-    caption: 'Chapter thirty looks beautiful on you',
-    orientation: 'portrait',
-    position: '50% 38%',
-    chapter: 'birthday',
-  },
-  {
-    id: 'birthday-007',
-    thumbSrc: mediaUrl('photos/birthday/block-01/birthday-007-480.webp'),
-    displaySrc: mediaUrl('photos/birthday/block-01/birthday-007-1280.webp'),
-    blurDataUrl: '',
-    width: 960,
-    height: 1280,
-    alt: 'Emily — The first page of her next era',
-    caption: 'The first page of her next era',
-    orientation: 'portrait',
-    position: '50% 42%',
-    chapter: 'birthday',
-  },
 ]
 
 export default photos
