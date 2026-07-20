@@ -44,6 +44,14 @@ async function loadAdventureFallback() {
 
 export const albums: PhotoAlbum[] = [
   {
+    id: 'birthday',
+    storageFolder: 'Photos/birthday',
+    title: 'Chapter 30',
+    subtitle: 'The birthday girl and the beginning of her next era',
+    count: 7,
+    fallbackLoader: () => import('./birthdayBlock').then((module) => module.default),
+  },
+  {
     id: 'us',
     storageFolder: 'Photos/us',
     title: 'The Us Files',
@@ -69,12 +77,6 @@ export const albums: PhotoAlbum[] = [
   },
 ]
 
-function photoKey(photo: PhotoMemory) {
-  const searchable = `${photo.id} ${photo.storagePath || ''}`.toLowerCase()
-  return searchable.match(/(?:adventure|alicante|birthday|training|quiet|us|many-sides)-\d{3}/)?.[0]
-    || photo.id.toLowerCase()
-}
-
 export async function loadAlbum(album: PhotoAlbum): Promise<ArchiveAlbumResult> {
   const localPhotos = (await album.fallbackLoader()).map((photo) => ({
     ...photo,
@@ -82,12 +84,18 @@ export async function loadAlbum(album: PhotoAlbum): Promise<ArchiveAlbumResult> 
   }))
 
   const liveAlbum = await loadSupabaseAlbum(album.storageFolder, album.id, album.title)
-  const localKeys = new Set(localPhotos.map(photoKey))
-  const supabaseOnly = liveAlbum.photos.filter((photo) => !localKeys.has(photoKey(photo)))
+
+  if (liveAlbum.photos.length >= localPhotos.length && liveAlbum.photos.length > 0) {
+    return {
+      photos: liveAlbum.photos,
+      source: 'supabase',
+      reason: liveAlbum.reason,
+    }
+  }
 
   return {
-    photos: [...localPhotos, ...supabaseOnly],
-    source: supabaseOnly.length > 0 && localPhotos.length === 0 ? 'supabase' : 'fallback',
+    photos: localPhotos,
+    source: 'fallback',
     reason: liveAlbum.reason,
   }
 }
