@@ -1,178 +1,28 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Reveal } from './Effects'
-import { MEDIA_BASE_URL } from '../config/media'
+import { ResolvedPhoto, type ResolvedPhotoDetails } from './ResolvedPhoto'
 import { albums, loadAlbum, totalPreparedMemories } from '../photoData/registry'
+import { photoSourceCandidates } from '../photoData/sourceCandidates'
 import type { PhotoMemory } from '../photoData/types'
-
-const chapterFolders: Record<PhotoMemory['chapter'], string> = {
-  birthday: 'birthday',
-  us: 'us',
-  quiet: 'quiet-days',
-  adventures: 'adventures',
-  training: 'training',
-  'many-sides': 'many-sides',
-  alicante: 'alicante',
-}
-
-function unique(values: Array<string | undefined>) {
-  return [...new Set(values.filter((value): value is string => Boolean(value)))]
-}
-
-function fileNameFromUrl(source: string) {
-  if (!source || source.startsWith('data:')) return ''
-  try {
-    return decodeURIComponent(new URL(source, MEDIA_BASE_URL).pathname.split('/').pop() || '')
-  } catch {
-    return source.split('/').pop() || ''
-  }
-}
-
-function storageCandidates(source: string, photo: PhotoMemory) {
-  if (!source || source.startsWith('data:')) return []
-
-  const fileName = fileNameFromUrl(source)
-  if (!fileName) return [source]
-
-  const folder = chapterFolders[photo.chapter]
-  const rawName = `${photo.id}.jpg`
-
-  return unique([
-    source,
-    `${MEDIA_BASE_URL}/Photos/${folder}/${fileName}`,
-    `${MEDIA_BASE_URL}/Photos/${folder}/block-01/${fileName}`,
-    `${MEDIA_BASE_URL}/${fileName}`,
-    `${MEDIA_BASE_URL}/Photos/${folder}/raw/${rawName}`,
-  ])
-}
-
-function isFullEmbeddedPhoto(source: string | undefined) {
-  return Boolean(source?.startsWith('data:image/') && source.length > 800)
-}
-
-function photoCandidates(photo: PhotoMemory) {
-  const preferred = [
-    photo.fallbackDisplaySrc,
-    photo.displaySrc,
-    photo.fallbackThumbSrc,
-    photo.thumbSrc,
-  ]
-
-  const remoteSources = preferred.filter(
-    (source): source is string => typeof source === 'string' && !source.startsWith('data:'),
-  )
-  const embeddedSources = preferred.filter(
-    (source): source is string => typeof source === 'string' && source.startsWith('data:image/'),
-  )
-  const embeddedFullPhoto = isFullEmbeddedPhoto(photo.blurDataUrl) ? [photo.blurDataUrl] : []
-
-  return unique([
-    ...remoteSources.flatMap((source) => storageCandidates(source, photo)),
-    ...embeddedSources,
-    ...embeddedFullPhoto,
-  ])
-}
-
-function fallbackArtwork(photo: PhotoMemory) {
-  const escapedCaption = photo.caption.replace(/[<>&'\"]/g, '')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="720" height="900" viewBox="0 0 720 900"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#24101f"/><stop offset=".52" stop-color="#6d294f"/><stop offset="1" stop-color="#d7b77c"/></linearGradient></defs><rect width="720" height="900" fill="url(#g)"/><circle cx="590" cy="150" r="180" fill="none" stroke="rgba(255,255,255,.15)" stroke-width="2"/><text x="54" y="720" fill="#f4c66f" font-family="Georgia,serif" font-size="24">EMILY ARCHIVE</text><text x="54" y="772" fill="#fff" font-family="Georgia,serif" font-size="34">${escapedCaption}</text><text x="54" y="825" fill="rgba(255,255,255,.68)" font-family="Arial,sans-serif" font-size="18">Photograph unavailable</text></svg>`
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
-}
-
-type ArchiveImageProps = {
-  photo: PhotoMemory
-  eager?: boolean
-  onReady: (photoId: string, image: HTMLImageElement | null) => void
-}
-
-function ArchiveImage({ photo, eager = false, onReady }: ArchiveImageProps) {
-  const candidates = useMemo(() => photoCandidates(photo), [
-    photo.id,
-    photo.thumbSrc,
-    photo.displaySrc,
-    photo.fallbackThumbSrc,
-    photo.fallbackDisplaySrc,
-    photo.blurDataUrl,
-    photo.chapter,
-  ])
-  const candidateKey = candidates.join('|')
-  const [source, setSource] = useState('')
-
-  useEffect(() => {
-    let cancelled = false
-    let activeLoader: HTMLImageElement | null = null
-    let index = 0
-
-    setSource('')
-
-    const loadNext = () => {
-      if (cancelled) return
-
-      if (index >= candidates.length) {
-        setSource(fallbackArtwork(photo))
-        onReady(photo.id, null)
-        return
-      }
-
-      const candidate = candidates[index]
-      index += 1
-
-      const loader = new Image()
-      activeLoader = loader
-      loader.decoding = 'async'
-      loader.onload = () => {
-        if (cancelled) return
-        setSource(candidate)
-        onReady(photo.id, loader)
-      }
-      loader.onerror = loadNext
-      loader.src = candidate
-    }
-
-    loadNext()
-
-    return () => {
-      cancelled = true
-      if (activeLoader) {
-        activeLoader.onload = null
-        activeLoader.onerror = null
-      }
-    }
-  }, [candidateKey, candidates, photo, onReady])
-
-  if (!source) return null
-
-  return (
-    <img
-      src={source}
-      width={photo.width}
-      height={photo.height}
-      alt={photo.alt}
-      loading={eager ? 'eager' : 'lazy'}
-      fetchPriority={eager ? 'high' : 'auto'}
-      decoding="async"
-      style={{ objectPosition: photo.position }}
-      onError={(event) => {
-        const image = event.currentTarget
-        if (image.dataset.artworkFallback === 'true') return
-        image.dataset.artworkFallback = 'true'
-        image.src = fallbackArtwork(photo)
-        onReady(photo.id, null)
-      }}
-    />
-  )
-}
 
 export function RomanceArchive() {
   const sectionRef = useRef<HTMLElement>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const touchStartX = useRef<number | null>(null)
   const [activeAlbum, setActiveAlbum] = useState(0)
   const [photos, setPhotos] = useState<PhotoMemory[]>([])
   const [albumCounts, setAlbumCounts] = useState<Record<string, number>>(() =>
     Object.fromEntries(albums.map((album) => [album.id, album.count])),
   )
   const [loadedPhotoIds, setLoadedPhotoIds] = useState<Set<string>>(() => new Set())
+  const [failedPhotoIds, setFailedPhotoIds] = useState<Set<string>>(() => new Set())
   const [loading, setLoading] = useState(false)
   const [armed, setArmed] = useState(false)
   const [selected, setSelected] = useState<number | null>(null)
+  const [lightboxLoaded, setLightboxLoaded] = useState(false)
+  const [lightboxError, setLightboxError] = useState(false)
   const [archiveSource, setArchiveSource] = useState<'supabase' | 'fallback'>('fallback')
 
   useEffect(() => {
@@ -194,11 +44,13 @@ export function RomanceArchive() {
 
   useEffect(() => {
     if (!armed) return
+
     let cancelled = false
     const album = albums[activeAlbum]
 
     setLoading(true)
     setLoadedPhotoIds(new Set())
+    setFailedPhotoIds(new Set())
 
     loadAlbum(album).then((result) => {
       if (cancelled) return
@@ -208,153 +60,290 @@ export function RomanceArchive() {
       setLoading(false)
     })
 
-    return () => { cancelled = true }
-  }, [activeAlbum, armed])
-
-  useEffect(() => {
-    if (selected === null || photos.length === 0) return
-    document.body.style.overflow = 'hidden'
-
-    const close = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') setSelected(null)
-      if (event.key === 'ArrowRight') setSelected((value) => value === null ? null : (value + 1) % photos.length)
-      if (event.key === 'ArrowLeft') setSelected((value) => value === null ? null : (value - 1 + photos.length) % photos.length)
-    }
-
-    window.addEventListener('keydown', close)
     return () => {
-      document.body.style.overflow = ''
-      window.removeEventListener('keydown', close)
+      cancelled = true
     }
-  }, [selected, photos.length])
+  }, [activeAlbum, armed])
 
   const album = albums[activeAlbum]
   const current = selected === null ? null : photos[selected]
+
+  const closeLightbox = useCallback(() => setSelected(null), [])
+  const showPrevious = useCallback(() => {
+    setSelected((value) => {
+      if (value === null || photos.length === 0) return value
+      return (value - 1 + photos.length) % photos.length
+    })
+  }, [photos.length])
+  const showNext = useCallback(() => {
+    setSelected((value) => {
+      if (value === null || photos.length === 0) return value
+      return (value + 1) % photos.length
+    })
+  }, [photos.length])
+
+  useEffect(() => {
+    if (selected === null || photos.length === 0) return
+
+    previousFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null
+    document.body.classList.add('archive-lightbox-open')
+
+    const focusTimer = window.setTimeout(() => closeButtonRef.current?.focus(), 0)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') closeLightbox()
+      if (event.key === 'ArrowRight') showNext()
+      if (event.key === 'ArrowLeft') showPrevious()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => {
+      window.clearTimeout(focusTimer)
+      document.body.classList.remove('archive-lightbox-open')
+      window.removeEventListener('keydown', handleKeyDown)
+      previousFocusRef.current?.focus()
+    }
+  }, [selected, photos.length, closeLightbox, showNext, showPrevious])
+
+  useEffect(() => {
+    setLightboxLoaded(false)
+    setLightboxError(false)
+  }, [current?.id])
+
+  useEffect(() => {
+    if (selected === null || photos.length < 2) return
+
+    const neighbourIndexes = [
+      (selected - 1 + photos.length) % photos.length,
+      (selected + 1) % photos.length,
+    ]
+
+    neighbourIndexes.forEach((index) => {
+      const source = photoSourceCandidates(photos[index], 'display')[0]
+      if (!source) return
+      const preload = new Image()
+      preload.decoding = 'async'
+      preload.src = source
+    })
+  }, [selected, photos])
+
   const organisedTotal = useMemo(
     () => Object.values(albumCounts).reduce((total, count) => total + count, 0),
     [albumCounts],
   )
   const archiveProgress = Math.min(organisedTotal || totalPreparedMemories, 100)
 
-  const markReady = useCallback((photoId: string, image: HTMLImageElement | null) => {
-    setLoadedPhotoIds((currentIds) => new Set(currentIds).add(photoId))
+  const markCardReady = useCallback((photoId: string, details: ResolvedPhotoDetails) => {
+    setLoadedPhotoIds((currentIds) => {
+      if (currentIds.has(photoId)) return currentIds
+      const next = new Set(currentIds)
+      next.add(photoId)
+      return next
+    })
+    setFailedPhotoIds((currentIds) => {
+      if (!currentIds.has(photoId)) return currentIds
+      const next = new Set(currentIds)
+      next.delete(photoId)
+      return next
+    })
 
-    if (!image?.naturalWidth || !image.naturalHeight) return
+    if (!details.width || !details.height) return
+    const orientation = details.height > details.width ? 'portrait' : 'landscape'
 
-    const orientation = image.naturalHeight > image.naturalWidth ? 'portrait' : 'landscape'
     setPhotos((currentPhotos) => currentPhotos.map((photo) => {
       if (photo.id !== photoId) return photo
       if (
-        photo.width === image.naturalWidth &&
-        photo.height === image.naturalHeight &&
+        photo.width === details.width &&
+        photo.height === details.height &&
         photo.orientation === orientation
       ) return photo
 
       return {
         ...photo,
-        width: image.naturalWidth,
-        height: image.naturalHeight,
+        width: details.width,
+        height: details.height,
         orientation,
       }
     }))
   }, [])
 
+  const markCardFailed = useCallback((photoId: string) => {
+    setFailedPhotoIds((currentIds) => {
+      if (currentIds.has(photoId)) return currentIds
+      const next = new Set(currentIds)
+      next.add(photoId)
+      return next
+    })
+  }, [])
+
+  const lightbox = current && selected !== null ? (
+    <div
+      className="memory-lightbox"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="memory-lightbox-title"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) closeLightbox()
+      }}
+      onTouchStart={(event) => {
+        touchStartX.current = event.touches[0]?.clientX ?? null
+      }}
+      onTouchEnd={(event) => {
+        if (touchStartX.current === null) return
+        const endX = event.changedTouches[0]?.clientX ?? touchStartX.current
+        const distance = endX - touchStartX.current
+        touchStartX.current = null
+        if (Math.abs(distance) < 55) return
+        if (distance > 0) showPrevious()
+        else showNext()
+      }}
+    >
+      <div className="lightbox-topbar">
+        <span>{album.title}</span>
+        <strong>{String(selected + 1).padStart(2, '0')} / {String(photos.length).padStart(2, '0')}</strong>
+      </div>
+
+      <button
+        ref={closeButtonRef}
+        className="lightbox-close"
+        onClick={closeLightbox}
+        aria-label="Close photograph"
+      >×</button>
+
+      <button className="lightbox-arrow previous" onClick={showPrevious} aria-label="Previous photograph">←</button>
+
+      <figure className={`lightbox-frame ${current.orientation}`} onMouseDown={(event) => event.stopPropagation()}>
+        <div className="lightbox-media">
+          {!lightboxLoaded && !lightboxError && <div className="lightbox-loader" aria-label="Loading full-size photograph" />}
+          {!lightboxError && (
+            <ResolvedPhoto
+              key={`lightbox-${current.id}`}
+              photo={current}
+              variant="display"
+              className={lightboxLoaded ? 'lightbox-photo loaded' : 'lightbox-photo'}
+              eager
+              onResolved={() => setLightboxLoaded(true)}
+              onExhausted={() => {
+                setLightboxError(true)
+                setLightboxLoaded(true)
+              }}
+            />
+          )}
+          {lightboxError && (
+            <div className="lightbox-unavailable">
+              <span>Photograph temporarily unavailable</span>
+              <p>The card remains organised and will reconnect when its full image is available.</p>
+            </div>
+          )}
+        </div>
+        <figcaption>
+          <div>
+            <span>{album.title}</span>
+            <strong id="memory-lightbox-title">{current.caption}</strong>
+          </div>
+          <small>Use ← → or swipe to continue</small>
+        </figcaption>
+      </figure>
+
+      <button className="lightbox-arrow next" onClick={showNext} aria-label="Next photograph">→</button>
+    </div>
+  ) : null
+
   return (
-    <section ref={sectionRef} className="romance-archive" id="memories" data-archive-source={archiveSource}>
-      <div className="archive-orbit" aria-hidden="true" />
+    <>
+      <section ref={sectionRef} className="romance-archive" id="memories" data-archive-source={archiveSource}>
+        <div className="archive-orbit" aria-hidden="true" />
 
-      <Reveal className="section-heading archive-heading">
-        <p className="eyebrow">The real love story</p>
-        <h2>More than a case file.<br /><em>These are us.</em></h2>
-        <p>All {totalPreparedMemories} photographs are organised here as full images, with the same clean presentation in every chapter.</p>
-      </Reveal>
+        <Reveal className="section-heading archive-heading">
+          <p className="eyebrow">The real love story</p>
+          <h2>More than a case file.<br /><em>These are us.</em></h2>
+          <p>All {totalPreparedMemories} photographs are organised into four chapters, with a full-screen viewer designed for every image shape.</p>
+        </Reveal>
 
-      <div className="archive-dashboard">
-        <div className="archive-counter">
-          <strong>{String(organisedTotal || totalPreparedMemories).padStart(3, '0')}</strong>
-          <span>photographs organised</span>
+        <div className="archive-dashboard">
+          <div className="archive-counter">
+            <strong>{String(organisedTotal || totalPreparedMemories).padStart(3, '0')}</strong>
+            <span>photographs organised</span>
+          </div>
+          <div className="archive-capacity">
+            <div><span style={{ width: `${archiveProgress}%` }} /></div>
+            <p>Cards use lightweight images. Clicking opens the best available full-size photograph without stretching or forced cropping.</p>
+          </div>
+          <div className={`archive-source-badge ${archiveSource}`}>
+            <i />
+            {archiveSource === 'supabase' ? 'Live archive' : 'Curated archive'}
+          </div>
         </div>
-        <div className="archive-capacity">
-          <div><span style={{ width: `${archiveProgress}%` }} /></div>
-          <p>Full-size photographs load directly. Blur previews are no longer used as finished images.</p>
-        </div>
-        <div className={`archive-source-badge ${archiveSource}`}>
-          <i />
-          {archiveSource === 'supabase' ? 'Live archive' : 'Full photo archive'}
-        </div>
-      </div>
 
-      <div className="album-tabs" role="tablist" aria-label="Photo albums">
-        {albums.map((item, index) => (
-          <button
-            key={item.id}
-            className={activeAlbum === index ? 'active' : ''}
-            onClick={() => { setActiveAlbum(index); setSelected(null) }}
-            role="tab"
-            aria-selected={activeAlbum === index}
-          >
-            <span>Chapter {String(index + 1).padStart(2, '0')}</span>
-            <strong>{item.title}</strong>
-            <small>{item.subtitle} · {albumCounts[item.id] ?? item.count} photographs</small>
-          </button>
-        ))}
-      </div>
-
-      <div className={`${loading ? 'memory-grid loading' : 'memory-grid'} album-${album.id}`} aria-live="polite">
-        {loading && Array.from({ length: 4 }, (_, index) => <div className="memory-skeleton" key={index} />)}
-        {!loading && photos.map((photo, index) => {
-          const isReady = loadedPhotoIds.has(photo.id)
-
-          return (
+        <div className="album-tabs" role="tablist" aria-label="Photo albums">
+          {albums.map((item, index) => (
             <button
-              className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'}`}
-              key={photo.id}
-              onClick={() => { if (isReady) setSelected(index) }}
-              aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Loading photograph.`}
-              aria-disabled={!isReady}
+              id={`album-tab-${item.id}`}
+              key={item.id}
+              className={activeAlbum === index ? 'active' : ''}
+              onClick={() => {
+                setActiveAlbum(index)
+                setSelected(null)
+              }}
+              role="tab"
+              aria-controls={`album-panel-${item.id}`}
+              aria-selected={activeAlbum === index}
             >
-              <ArchiveImage
-                photo={photo}
-                eager={index < 4}
-                onReady={markReady}
-              />
-              <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
-              <div className="memory-caption">
-                <small>{album.title}</small>
-                <strong>{photo.caption}</strong>
-              </div>
+              <span>Chapter {String(index + 1).padStart(2, '0')}</span>
+              <strong>{item.title}</strong>
+              <small>{item.subtitle} · {albumCounts[item.id] ?? item.count} photographs</small>
             </button>
-          )
-        })}
-      </div>
-
-      <div className="archive-next-blocks">
-        <span>{totalPreparedMemories} photographs connected</span>
-        <p>Chapter 30 · Us · Adventures · Alicante</p>
-      </div>
-
-      {current && selected !== null && (
-        <div className="memory-lightbox" role="dialog" aria-modal="true" aria-label={current.caption} onClick={() => setSelected(null)}>
-          <button className="lightbox-close" onClick={() => setSelected(null)} aria-label="Close photo">×</button>
-          <button
-            className="lightbox-arrow previous"
-            onClick={(event) => { event.stopPropagation(); setSelected((selected - 1 + photos.length) % photos.length) }}
-            aria-label="Previous photo"
-          >←</button>
-          <figure onClick={(event) => event.stopPropagation()}>
-            <ArchiveImage key={current.id} photo={current} eager onReady={markReady} />
-            <figcaption>
-              <span>{album.title}</span>
-              <strong>{current.caption}</strong>
-            </figcaption>
-          </figure>
-          <button
-            className="lightbox-arrow next"
-            onClick={(event) => { event.stopPropagation(); setSelected((selected + 1) % photos.length) }}
-            aria-label="Next photo"
-          >→</button>
+          ))}
         </div>
-      )}
-    </section>
+
+        <div
+          id={`album-panel-${album.id}`}
+          className={`${loading ? 'memory-grid loading' : 'memory-grid'} album-${album.id}`}
+          role="tabpanel"
+          aria-labelledby={`album-tab-${album.id}`}
+          aria-busy={loading}
+        >
+          {loading && Array.from({ length: 8 }, (_, index) => <div className="memory-skeleton" key={index} />)}
+
+          {!loading && photos.map((photo, index) => {
+            const isReady = loadedPhotoIds.has(photo.id)
+            const hasFailed = failedPhotoIds.has(photo.id)
+
+            return (
+              <button
+                className={`memory-card ${photo.orientation} ${isReady ? 'media-ready' : 'media-pending'} ${hasFailed ? 'media-failed' : ''}`}
+                key={photo.id}
+                onClick={() => setSelected(index)}
+                aria-label={isReady ? `Open ${photo.caption}` : `${photo.caption}. Photograph loading.`}
+                disabled={!isReady}
+              >
+                <ResolvedPhoto
+                  photo={photo}
+                  variant="thumb"
+                  className="memory-card-photo"
+                  eager={index < 6}
+                  onResolved={(details) => markCardReady(photo.id, details)}
+                  onExhausted={() => markCardFailed(photo.id)}
+                />
+                {hasFailed && <span className="memory-unavailable">Image reconnecting</span>}
+                <span className="memory-number">{String(index + 1).padStart(2, '0')}</span>
+                <div className="memory-caption">
+                  <small>{album.title}</small>
+                  <strong>{photo.caption}</strong>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="archive-next-blocks">
+          <span>{totalPreparedMemories} photographs connected</span>
+          <p>Chapter 30 · Us · Adventures · Alicante</p>
+        </div>
+      </section>
+
+      {lightbox && typeof document !== 'undefined' ? createPortal(lightbox, document.body) : null}
+    </>
   )
 }
