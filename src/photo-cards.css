@@ -14,6 +14,12 @@
   color: #fff !important;
 }
 
+.flip-reasons-grid .reason-card,
+.flip-reasons-grid .reason-card.open {
+  transform: none !important;
+  transform-style: flat !important;
+}
+
 .reason-card.reason-photo-ready {
   background-image:
     linear-gradient(to top, rgba(11, 5, 10, .84) 0%, rgba(11, 5, 10, .18) 58%, rgba(11, 5, 10, .04) 100%),
@@ -40,6 +46,7 @@
   justify-content: space-between;
   padding: clamp(16px, 2.3vw, 24px);
   color: #fff !important;
+  backface-visibility: visible !important;
   transition: opacity .26s ease, transform .26s ease;
 }
 
